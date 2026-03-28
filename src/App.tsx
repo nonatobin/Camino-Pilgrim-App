@@ -8,7 +8,9 @@ import ActiveTracking from './components/ActiveTracking';
 import TrainingPlan from './components/TrainingPlan';
 import FamilySync from './components/FamilySync';
 import LiveAssistant from './components/LiveAssistant';
+import TranslatePanel from './components/TranslatePanel';
 import Onboarding from './components/Onboarding';
+import { featureFlags } from './config/environment';
 import { Map as MapIcon, LogIn, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -23,13 +25,11 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         setUser(authUser);
-        // Listen to user profile changes
         const userRef = doc(db, 'users', authUser.uid);
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             setProfile(docSnap.data());
           } else {
-            // Create initial profile if it doesn't exist
             setDoc(userRef, {
               uid: authUser.uid,
               displayName: authUser.displayName,
@@ -48,7 +48,6 @@ export default function App() {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -68,11 +67,7 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center p-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-white rounded-[40px] p-12 shadow-xl text-center border border-[#5A5A40]/5"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full bg-white rounded-[40px] p-12 shadow-xl text-center border border-[#5A5A40]/5">
           <div className="w-20 h-20 bg-[#5A5A40] rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-lg">
             <MapIcon size={40} />
           </div>
@@ -80,15 +75,9 @@ export default function App() {
           <p className="text-gray-500 text-xl mb-12 font-serif italic leading-relaxed">
             Your companion for the journey to Santiago de Compostela.
           </p>
-          
-          <button
-            onClick={loginWithGoogle}
-            className="w-full py-6 bg-[#5A5A40] text-white rounded-full font-bold text-xl flex items-center justify-center gap-4 hover:bg-[#4A4A30] active:scale-[0.98] transition-all shadow-lg"
-          >
-            <LogIn size={24} />
-            Sign in with Google
+          <button onClick={loginWithGoogle} className="w-full py-6 bg-[#5A5A40] text-white rounded-full font-bold text-xl flex items-center justify-center gap-4 hover:bg-[#4A4A30] active:scale-[0.98] transition-all shadow-lg">
+            <LogIn size={24} /> Sign in with Google
           </button>
-          
           <p className="mt-8 text-xs text-gray-400 uppercase tracking-widest font-bold">
             Secure Multiplayer Training Sync
           </p>
@@ -114,20 +103,18 @@ export default function App() {
           >
             {activeTab === 'plan' && <TrainingPlan user={user} profile={profile} />}
             {activeTab === 'track' && <ActiveTracking user={user} />}
-            {activeTab === 'family' && <FamilySync user={user} />}
+            {activeTab === 'family' && featureFlags.familySyncEnabled && <FamilySync user={user} />}
+            {activeTab === 'translate' && featureFlags.translateEnabled && <TranslatePanel />}
           </motion.div>
         </AnimatePresence>
 
-        {/* Floating Assistant Trigger */}
-        <button
-          onClick={() => setShowAssistant(true)}
-          className="fixed bottom-32 right-8 w-20 h-20 bg-[#5A5A40] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white"
-        >
-          <MessageSquare size={32} />
-        </button>
-
+        {featureFlags.voiceAssistantEnabled && (
+          <button onClick={() => setShowAssistant(true)} className="fixed bottom-32 right-8 w-20 h-20 bg-[#5A5A40] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white">
+            <MessageSquare size={32} />
+          </button>
+        )}
         <AnimatePresence>
-          {showAssistant && (
+          {showAssistant && featureFlags.voiceAssistantEnabled && (
             <LiveAssistant user={user} profile={profile} onClose={() => setShowAssistant(false)} />
           )}
         </AnimatePresence>
