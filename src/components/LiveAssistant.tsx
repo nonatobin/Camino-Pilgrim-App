@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 interface LiveAssistantProps {
   user: any;
   profile: any;
-  onClose: () => void;
+  onClose: () => void
 }
 
 export default function LiveAssistant({ user, profile, onClose }: LiveAssistantProps) {
@@ -63,7 +63,7 @@ export default function LiveAssistant({ user, profile, onClose }: LiveAssistantP
 
     try {
       const session = await ai.live.connect({
-        model: "gemini-2.5-flash-native-audio-preview-12-2025",
+        model: "gemini-3.1-flash-live-preview",
         callbacks: {
           onopen: () => {
             console.log('Live session opened');
