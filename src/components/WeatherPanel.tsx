@@ -73,7 +73,6 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
       const apiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
 
       if (!apiKey) {
-        // Use demo data
         setUsingDemo(true);
         setWeather(DEMO_WEATHER);
         setForecast(DEMO_FORECAST);
@@ -82,7 +81,6 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
       }
 
       try {
-        // Fetch current weather
         const weatherResponse = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?lat=${currentPosition.lat}&lon=${currentPosition.lng}&units=imperial&appid=${apiKey}`
         );
@@ -93,7 +91,6 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
 
         const weatherData = await weatherResponse.json();
 
-        // Fetch forecast
         const forecastResponse = await fetch(
           `https://api.openweathermap.org/data/2.5/forecast?lat=${currentPosition.lat}&lon=${currentPosition.lng}&units=imperial&appid=${apiKey}`
         );
@@ -110,11 +107,10 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
           condition: weatherData.weather[0].main,
           humidity: weatherData.main.humidity,
           windSpeed: Math.round(weatherData.wind.speed),
-          uv: 0, // Would need separate UV API call
+          uv: 0,
           icon: weatherData.weather[0].icon,
         });
 
-        // Process forecast (every 8 hours)
         const processedForecast: ForecastDay[] = [];
         for (let i = 8; i < forecastData.list.length; i += 8) {
           const day = forecastData.list[i];
@@ -143,13 +139,13 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
   }, [currentPosition]);
 
   const getWeatherEmoji = (iconCode: string): string => {
-    if (iconCode.includes('01')) return '\u{2600}\u{FE0F}';
-    if (iconCode.includes('02')) return '\u{26C5}';
-    if (iconCode.includes('03') || iconCode.includes('04')) return '\u{2601}\u{FE0F}';
-    if (iconCode.includes('09') || iconCode.includes('10')) return '\u{1F327}\u{FE0F}';
-    if (iconCode.includes('11')) return '\u{26C8}\u{FE0F}';
-    if (iconCode.includes('13')) return '\u{2744}\u{FE0F}';
-    return '\u{1F324}\u{FE0F}';
+    if (iconCode.includes('01')) return '☀️';
+    if (iconCode.includes('02')) return '⛅';
+    if (iconCode.includes('03') || iconCode.includes('04')) return '☁️';
+    if (iconCode.includes('09') || iconCode.includes('10')) return '🌧️';
+    if (iconCode.includes('11')) return '⛈️';
+    if (iconCode.includes('13')) return '❄️';
+    return '🌤️';
   };
 
   if (!currentPosition) {
@@ -223,7 +219,7 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
                     Right Now
                   </div>
                   <div className="text-5xl font-bold text-[#5A5A40]">
-                    {weather.temp}\u{00B0}F
+                    {weather.temp}°F
                   </div>
                   <p className="text-[#5A5A40]/70 font-medium mt-1">{weather.condition}</p>
                 </div>
@@ -234,7 +230,7 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-white rounded-[16px] p-3 text-center">
                   <p className="text-xs text-[#5A5A40]/60 font-bold mb-1">Feels Like</p>
-                  <p className="text-lg font-bold text-[#5A5A40]">{weather.feelsLike}\u{00B0}F</p>
+                  <p className="text-lg font-bold text-[#5A5A40]">{weather.feelsLike}°F</p>
                 </div>
                 <div className="bg-white rounded-[16px] p-3 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -270,8 +266,8 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
                     <p className="text-xs font-bold text-[#5A5A40]/60 mb-2">{day.date}</p>
                     <p className="text-3xl mb-2">{getWeatherEmoji(day.icon)}</p>
                     <div className="mb-2">
-                      <p className="text-sm font-bold text-[#5A5A40]">{day.high}\u{00B0}</p>
-                      <p className="text-xs text-[#5A5A40]/60">{day.low}\u{00B0}</p>
+                      <p className="text-sm font-bold text-[#5A5A40]">{day.high}°</p>
+                      <p className="text-xs text-[#5A5A40]/60">{day.low}°</p>
                     </div>
                     <p className="text-xs text-[#5A5A40]/70 line-clamp-1">{day.condition}</p>
                   </motion.div>
