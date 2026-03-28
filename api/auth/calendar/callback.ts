@@ -1,13 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { google } from 'googleapis';
+import { createOAuthClient } from '../../_lib/oauth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { code } = req.query;
-  const client = new google.auth.OAuth2(
-    process.env.GOOGLE_CALENDAR_CLIENT_ID,
-    process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-    `${process.env.APP_URL || req.headers.origin || ''}/api/auth/calendar/callback`
-  );
+  const client = createOAuthClient(req);
+
   try {
     const { tokens } = await client.getToken(code as string);
     res.send(`
