@@ -18,3 +18,5 @@ View your app in AI Studio: https://ai.studio/apps/f640ee17-73be-4a14-b947-43ca0
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+   Deployed on Vercel.
