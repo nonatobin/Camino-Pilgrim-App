@@ -10,7 +10,7 @@ interface LiveAssistantProps {
   user: any;
   profile: any;
   onClose: () => void
-}
+
 
 export default function LiveAssistant({ user, profile, onClose }: LiveAssistantProps) {
   const [isOpen, setIsOpen] = useState(true); // Start open when triggered from App
@@ -28,12 +28,12 @@ export default function LiveAssistant({ user, profile, onClose }: LiveAssistantP
   const streamRef = useRef<MediaStream | null>(null);
 
   const startLiveSession = async () => {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!import.meta.env.VITE_GEMINI_API_KEY) {
       console.error('Gemini API key missing');
       return;
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
     
     const systemInstruction = `
       You are the "Intelligent Trail Guide" for the Camino Pilgrim App. 
