@@ -3,7 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/__/:path*", "destination": "https://gen-lang-client-0715958804.firebaseapp.com/__/:path*" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/|__/).*)", "destination": "/index.html" }
   ]
 }
