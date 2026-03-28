@@ -15,7 +15,7 @@
  */
 
 import type { VercelRequest } from '@vercel/node';
-import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 const CALLBACK_PATH = '/api/auth/calendar/callback';
 
@@ -23,46 +23,40 @@ const CALLBACK_PATH = '/api/auth/calendar/callback';
  * Resolve the base URL of the running app, in priority order.
  */
 export function getAppBaseUrl(req?: VercelRequest): string {
-  // 1. Explicit APP_URL — user controls this, highest priority
+    // 1. Explicit APP_URL — user controls this, highest priority
   if (process.env.APP_URL) {
-    return process.env.APP_URL.replace(/\/$/, '');
+        return process.env.APP_URL.replace(/\/$/, '');
   }
 
   // 2. VERCEL_URL — auto-injected by Vercel (does NOT include protocol)
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+        return `https://${process.env.VERCEL_URL}`;
   }
 
-  // 3. Request headers
+  // 3. Infer from the incoming request headers
   if (req) {
-    const origin = req.headers.origin;
-    if (origin) return origin.replace(/\/$/, '');
+        const origin = req.headers.origin;
+        if (origin) return origin.replace(/\/$/, '');
 
-    const host = req.headers.host;
-    if (host) {
-      const protocol = host.includes('localhost') ? 'http' : 'https';
-      return `${protocol}://${host}`;
-    }
+      const host = req.headers.host;
+        if (host) {
+                const protocol = host.includes('localhost') ? 'http' : 'https';
+                return `${protocol}://${host}`;
+        }
   }
 
-  // 4. Last-resort dev default
+  // 4. Last-resort default for local dev
   return 'http://localhost:5173';
 }
 
-/**
- * Full redirect URI for Google Calendar OAuth.
- */
 export function getRedirectUri(req?: VercelRequest): string {
-  return `${getAppBaseUrl(req)}${CALLBACK_PATH}`;
+    return `${getAppBaseUrl(req)}${CALLBACK_PATH}`;
 }
 
-/**
- * Create a pre-configured Google OAuth2 client with the correct redirect URI.
- */
 export function createOAuthClient(req?: VercelRequest) {
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CALENDAR_CLIENT_ID,
-    process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-    getRedirectUri(req)
-  );
+    return new OAuth2Client(
+          process.env.GOOGLE_CALENDAR_CLIENT_ID,
+          process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+          getRedirectUri(req)
+        );
 }
