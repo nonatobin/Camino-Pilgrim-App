@@ -1,19 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
+import { createOAuthClient } from '../_lib/oauth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  
+
   const { events, tokens } = req.body;
   if (!tokens) return res.status(401).json({ error: "Not authenticated with Calendar" });
 
-  const client = new google.auth.OAuth2(
-    process.env.GOOGLE_CALENDAR_CLIENT_ID,
-    process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-    `${process.env.APP_URL || ''}/api/auth/calendar/callback`
-  );
+  const client = createOAuthClient(req);
   client.setCredentials(tokens);
   const calendar = google.calendar({ version: 'v3', auth: client });
 
