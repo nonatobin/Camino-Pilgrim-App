@@ -1,0 +1,5 @@
+{
+  "name": "Camino Pilgrim App",
+  "description": "A full-stack training and tracking companion for pilgrims walking the Camino de Santiago, featuring real-time family sync and health metrics.",
+  "requestFramePermissions": ["geolocation"]
+}

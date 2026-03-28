@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - age: number
+    //   - physicalBaseline: number
+    //   - departureDate: string
+    //   - startLocation: string
+    //   - endDestination: string
+    //   - onboardingCompleted: boolean
+    //
+    // Collection: users/{userId}/logs/{logId}
+    // Fields:
+    //   - uid: string (required)
+    //   - userName: string
+    //   - userPhoto: string
+    //   - date: string (required)
+    //   - distance: number (required)
+    //   - speed: number
+    //   - duration: number
+    //   - createdAt: timestamp (required)
+    //   - type: string (automated/manual)
+    //
+    // Collection: users/{userId}/plans/{planId}
+    // Fields:
+    //   - uid: string (required)
+    //   - startDate: string (required)
+    //   - endDate: string (required)
+    //   - totalDistance: number
+    //   - schedule: array (required)
+    //   - updatedAt: timestamp
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "nonatobin@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() < 500)) &&
+             (!('age' in data) || (data.age is number && data.age >= 0 && data.age < 120)) &&
+             (!('physicalBaseline' in data) || (data.physicalBaseline is number && data.physicalBaseline >= 0)) &&
+             (!('departureDate' in data) || (data.departureDate is string)) &&
+             (!('startLocation' in data) || (data.startLocation is string && data.startLocation.size() < 200)) &&
+             (!('endDestination' in data) || (data.endDestination is string && data.endDestination.size() < 200)) &&
+             (!('onboardingCompleted' in data) || (data.onboardingCompleted is bool)) &&
+             (!('role' in data) || (data.role is string && data.role in ['admin', 'user']));
+    }
+
+    function isValidLog(data) {
+      return data.keys().hasAll(['uid', 'date', 'distance', 'createdAt']) &&
+             data.uid is string &&
+             data.date is string &&
+             data.distance is number &&
+             data.distance >= 0 &&
+             data.createdAt is timestamp &&
+             (!('speed' in data) || (data.speed is number && data.speed >= 0)) &&
+             (!('duration' in data) || (data.duration is number && data.duration >= 0)) &&
+             (!('userName' in data) || (data.userName is string && data.userName.size() < 100)) &&
+             (!('userPhoto' in data) || (data.userPhoto is string && data.userPhoto.size() < 500));
+    }
+
+    function isValidPlan(data) {
+      return data.keys().hasAll(['uid', 'startDate', 'endDate', 'schedule']) &&
+             data.uid is string &&
+             data.startDate is string &&
+             data.endDate is string &&
+             data.schedule is list &&
+             (!('totalDistance' in data) || (data.totalDistance is number && data.totalDistance >= 0)) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Allow reading profiles for leaderboard
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      match /logs/{logId} {
+        allow read: if isAuthenticated(); // Allow reading logs for family leaderboard
+        allow create: if isOwner(userId) && isValidLog(request.resource.data) && request.resource.data.uid == request.auth.uid;
+        allow update, delete: if isOwner(userId);
+      }
+
+      match /plans/{planId} {
+        allow read: if isAuthenticated(); // Allow reading plans for family leaderboard
+        allow create, update: if isOwner(userId) && isValidPlan(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Collection Group Rule for Leaderboard
+    match /{path=**}/logs/{logId} {
+      allow read: if isAuthenticated();
+    }
+
+    // Beta Feedback Rules
+    match /beta_feedback/{feedbackId} {
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['uid', 'text', 'createdAt']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.createdAt is timestamp;
+      allow read: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "age": { "type": "number" },
+        "physicalBaseline": { "type": "number", "description": "Current comfortable walking distance in miles" },
+        "departureDate": { "type": "string", "format": "date" },
+        "startLocation": { "type": "string" },
+        "endDestination": { "type": "string" },
+        "onboardingCompleted": { "type": "boolean" }
+      },
+      "required": ["uid", "email"]
+    },
+    "TrainingPlan": {
+      "title": "Training Plan",
+      "description": "A generated progressive training schedule",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "totalDistance": { "type": "number" },
+        "schedule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "day": { "type": "number" },
+              "date": { "type": "string", "format": "date" },
+              "targetDistance": { "type": "number" },
+              "completed": { "type": "boolean" }
+            }
+          }
+        },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["uid", "startDate", "endDate", "schedule"]
+    },
+    "TrainingLog": {
+      "title": "Training Log",
+      "description": "A single training session log",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "date": { "type": "string" },
+        "distance": { "type": "number" },
+        "speed": { "type": "number" },
+        "duration": { "type": "number" },
+        "createdAt": { "type": "timestamp" },
+        "type": { "type": "string", "enum": ["manual", "automated"] }
+      },
+      "required": ["uid", "distance", "date", "createdAt"]
+    },
+    "BetaFeedback": {
+      "title": "Beta Feedback",
+      "description": "Voice-transcribed bug reports and feature requests",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["bug", "feature", "other"] },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["uid", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/logs/{logId}": {
+      "schema": "TrainingLog",
+      "description": "Training logs for each user"
+    },
+    "/users/{userId}/plans/{planId}": {
+      "schema": "TrainingPlan",
+      "description": "Training plans for each user"
+    },
+    "/beta_feedback/{feedbackId}": {
+      "schema": "BetaFeedback",
+      "description": "Global collection for beta feedback"
+    }
+  }
+}
