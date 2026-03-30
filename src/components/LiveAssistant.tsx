@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Mic, MicOff, X, Volume2, VolumeX, ShieldCheck } from 'lucide-react';
-import { GoogleGenAI, Modality } from '@google/genai';
 import { cn } from '../lib/utils';
 
 interface LiveAssistantProps {
@@ -13,10 +12,17 @@ interface LiveAssistantProps {
 /**
  * LiveAssistant — Gemini Live 2.0 voice interface for the Camino Pilgrim App.
  *
- * Architecture: Browser → WebSocket (via @google/genai SDK) → Gemini 3.1 Flash Live API
- * Audio: Mic capture at 16kHz PCM via AudioWorklet → Gemini → 24kHz PCM playback via Web Audio API
- * No relay server needed — the SDK connects directly to Google's WebSocket endpoint.
+ * Architecture: Browser → raw WebSocket → Gemini 3.1 Flash Live API
+ * Audio: Mic capture at 16kHz PCM via AudioWorklet → base64 JSON → Gemini
+ *        Gemini → 24kHz PCM base64 → Web Audio API playback
+ *
+ * Uses raw WebSocket to wss://generativelanguage.googleapis.com directly
+ * (the @google/genai SDK is server-side only for Live API).
  */
+
+const GEMINI_WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
+const MODEL = 'models/gemini-3.1-flash-live-preview';
+
 export default function LiveAssistant({ user, profile, onClose }: LiveAssistantProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -25,21 +31,19 @@ export default function LiveAssistant({ user, profile, onClose }: LiveAssistantP
   const [userTranscript, setUserTranscript] = useState('');
   const [agentTranscript, setAgentTranscript] = useState('');
 
-  // Refs for audio infrastructure
-  const sessionRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackCtxRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
-  // Audio playback queue (PCM chunks from Gemini at 24kHz)
+  // Audio playback queue
   const playbackQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
   const mutedRef = useRef(false);
 
-  // Keep mutedRef in sync
-  useEffect(() => {
-    mutedRef.current = isMuted;
-  }, [isMuted]);
+  useEffect(() => { mutedRef.current = isMuted; }, [isMuted]);
 
   const buildSystemPrompt = useCallback(() => {
     return `You are the "Intelligent Trail Guide" for the Camino Pilgrim App.
@@ -76,13 +80,18 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
     }
     isPlayingRef.current = true;
 
-    const ctx = audioContextRef.current;
+    // Use a separate AudioContext at 24kHz for playback
+    let ctx = playbackCtxRef.current;
     if (!ctx || ctx.state === 'closed') {
-      isPlayingRef.current = false;
-      return;
+      try {
+        ctx = new AudioContext({ sampleRate: 24000 });
+        playbackCtxRef.current = ctx;
+      } catch (e) {
+        console.error('[LiveAssistant] Failed to create playback AudioContext:', e);
+        isPlayingRef.current = false;
+        return;
+      }
     }
-
-    // Resume AudioContext if suspended (Safari requires user gesture)
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
@@ -90,23 +99,19 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
     const base64Data = playbackQueueRef.current.shift()!;
 
     try {
-      // Decode base64 to bytes
       const binaryStr = atob(base64Data);
       const bytes = new Uint8Array(binaryStr.length);
       for (let i = 0; i < binaryStr.length; i++) {
         bytes[i] = binaryStr.charCodeAt(i);
       }
 
-      // Convert 16-bit PCM to Float32 for Web Audio API
       const int16 = new Int16Array(bytes.buffer);
       const float32 = new Float32Array(int16.length);
       for (let i = 0; i < int16.length; i++) {
         float32[i] = int16[i] / 32768.0;
       }
 
-      // Gemini Live outputs 24kHz mono PCM
-      const PLAYBACK_RATE = 24000;
-      const audioBuffer = ctx.createBuffer(1, float32.length, PLAYBACK_RATE);
+      const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
       audioBuffer.getChannelData(0).set(float32);
 
       const source = ctx.createBufferSource();
@@ -115,8 +120,8 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
       source.onended = () => playNextChunk();
       source.start();
     } catch (e) {
-      console.error('Audio playback error:', e);
-      playNextChunk(); // Skip bad chunk, continue
+      console.error('[LiveAssistant] Playback error:', e);
+      playNextChunk();
     }
   }, []);
 
@@ -133,9 +138,65 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
     isPlayingRef.current = false;
   }, []);
 
-  // --- Start Live Session ---
+  // --- WebSocket message handler ---
+  const handleGeminiMessage = useCallback((event: MessageEvent) => {
+    try {
+      const msg = JSON.parse(event.data);
+
+      // Setup complete acknowledgment
+      if (msg.setupComplete) {
+        console.log('[LiveAssistant] Setup complete — session is live');
+        setIsConnected(true);
+        setIsConnecting(false);
+        return;
+      }
+
+      // Server content (audio, transcriptions, turn events)
+      if (msg.serverContent) {
+        const sc = msg.serverContent;
+
+        // Audio response chunks
+        if (sc.modelTurn?.parts) {
+          for (const part of sc.modelTurn.parts) {
+            if (part.inlineData?.data) {
+              enqueueAudio(part.inlineData.data);
+            }
+          }
+        }
+
+        // Input transcription (what the user said)
+        if (sc.inputTranscription?.text) {
+          setUserTranscript(prev => prev + sc.inputTranscription.text);
+        }
+
+        // Output transcription (what Gemini said)
+        if (sc.outputTranscription?.text) {
+          setAgentTranscript(prev => prev + sc.outputTranscription.text);
+        }
+
+        // Turn complete — keep transcripts visible
+        if (sc.turnComplete) {
+          // Optionally clear for next turn
+        }
+
+        // Barge-in: user interrupted
+        if (sc.interrupted) {
+          clearPlayback();
+        }
+      }
+
+      // Tool calls (not used yet, but handle gracefully)
+      if (msg.toolCall) {
+        console.log('[LiveAssistant] Tool call received (not implemented):', msg.toolCall);
+      }
+    } catch (e) {
+      console.error('[LiveAssistant] Failed to parse message:', e);
+    }
+  }, [enqueueAudio, clearPlayback]);
+
+  // --- Start Session ---
   const startSession = useCallback(async () => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
     if (!apiKey) {
       setError('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your environment.');
       return;
@@ -147,13 +208,7 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
     setAgentTranscript('');
 
     try {
-      // Create AudioContext — must be triggered by user gesture on Safari
-      // Use 16kHz for mic capture; we create a separate context for playback if needed
-      // Actually, AudioContext can handle mixed rates via createBuffer
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      audioContextRef.current = ctx;
-
-      // Get mic access
+      // 1. Get mic access first (must be from user gesture on Safari)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -165,7 +220,15 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
       });
       mediaStreamRef.current = stream;
 
-      // Create AudioWorklet for mic capture (Float32 → Int16 → base64)
+      // 2. Create AudioContext for mic capture at 16kHz
+      const captureCtx = new AudioContext({ sampleRate: 16000 });
+      audioContextRef.current = captureCtx;
+
+      // Also pre-create playback context (user gesture required on Safari)
+      const playCtx = new AudioContext({ sampleRate: 24000 });
+      playbackCtxRef.current = playCtx;
+
+      // 3. Set up AudioWorklet for PCM capture
       const workletCode = `
         class PcmCaptureProcessor extends AudioWorkletProcessor {
           process(inputs) {
@@ -186,107 +249,90 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
       `;
       const blob = new Blob([workletCode], { type: 'application/javascript' });
       const workletUrl = URL.createObjectURL(blob);
-      await ctx.audioWorklet.addModule(workletUrl);
+      await captureCtx.audioWorklet.addModule(workletUrl);
       URL.revokeObjectURL(workletUrl);
 
-      const sourceNode = ctx.createMediaStreamSource(stream);
-      const workletNode = new AudioWorkletNode(ctx, 'pcm-capture');
+      const srcNode = captureCtx.createMediaStreamSource(stream);
+      sourceNodeRef.current = srcNode;
+      const workletNode = new AudioWorkletNode(captureCtx, 'pcm-capture');
       workletNodeRef.current = workletNode;
 
-      // Connect Gemini Live session
-      const ai = new GoogleGenAI({ apiKey });
+      // 4. Open WebSocket to Gemini Live API
+      const wsUrl = `${GEMINI_WS_URL}?key=${apiKey}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-      const session = await ai.live.connect({
-        model: 'gemini-3.1-flash-live-preview',
-        callbacks: {
-          onopen: () => {
-            console.log('[LiveAssistant] Gemini session opened');
-            setIsConnected(true);
-            setIsConnecting(false);
-          },
-          onmessage: (message: any) => {
-            // Handle audio response chunks
-            if (message.serverContent?.modelTurn?.parts) {
-              for (const part of message.serverContent.modelTurn.parts) {
-                if (part.inlineData?.data) {
-                  enqueueAudio(part.inlineData.data);
-                }
-              }
-            }
+      ws.onopen = () => {
+        console.log('[LiveAssistant] WebSocket connected, sending setup...');
 
-            // Handle transcriptions
-            if (message.serverContent?.inputTranscription?.text) {
-              setUserTranscript(prev => prev + message.serverContent.inputTranscription.text);
-            }
-            if (message.serverContent?.outputTranscription?.text) {
-              setAgentTranscript(prev => prev + message.serverContent.outputTranscription.text);
-            }
-
-            // Handle turn complete — reset partial transcripts for next turn
-            if (message.serverContent?.turnComplete) {
-              // Keep the last completed transcript visible
-            }
-
-            // Handle barge-in (user interrupted Gemini)
-            if (message.serverContent?.interrupted) {
-              clearPlayback();
-            }
-          },
-          onerror: (e: any) => {
-            console.error('[LiveAssistant] Session error:', e);
-            setError('Connection error. Please try again.');
-            setIsConnected(false);
-            setIsConnecting(false);
-          },
-          onclose: (e: any) => {
-            console.log('[LiveAssistant] Session closed:', e?.reason || '');
-            setIsConnected(false);
-            setIsConnecting(false);
-          },
-        },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-          systemInstruction: buildSystemPrompt(),
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-        },
-      });
-
-      sessionRef.current = session;
-
-      // Wire up mic → Gemini
-      workletNode.port.onmessage = (event: MessageEvent) => {
-        if (sessionRef.current) {
-          const pcmBuffer = new Uint8Array(event.data);
-          // Convert to base64
-          let binary = '';
-          for (let i = 0; i < pcmBuffer.length; i++) {
-            binary += String.fromCharCode(pcmBuffer[i]);
-          }
-          const base64 = btoa(binary);
-
-          try {
-            sessionRef.current.sendRealtimeInput({
-              audio: {
-                data: base64,
-                mimeType: 'audio/pcm;rate=16000',
+        // Send session configuration as first message
+        const setupMessage = {
+          setup: {
+            model: MODEL,
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },
+                },
               },
-            });
-          } catch (err) {
-            // Session may have closed
-            console.warn('[LiveAssistant] Send error:', err);
-          }
+            },
+            systemInstruction: {
+              parts: [{ text: buildSystemPrompt() }],
+            },
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+          },
+        };
+        ws.send(JSON.stringify(setupMessage));
+      };
+
+      ws.onmessage = handleGeminiMessage;
+
+      ws.onerror = (e) => {
+        console.error('[LiveAssistant] WebSocket error:', e);
+        setError('Connection error. Check your API key and try again.');
+        setIsConnected(false);
+        setIsConnecting(false);
+      };
+
+      ws.onclose = (e) => {
+        console.log('[LiveAssistant] WebSocket closed:', e.code, e.reason);
+        setIsConnected(false);
+        setIsConnecting(false);
+        if (e.code !== 1000 && e.code !== 1005) {
+          setError(`Connection closed: ${e.reason || 'Unknown error'} (code ${e.code})`);
         }
       };
 
-      // Connect audio graph: mic → worklet → (nowhere, just capturing)
-      sourceNode.connect(workletNode);
-      // Don't connect workletNode to destination (we don't want to hear our own mic)
+      // 5. Wire mic audio → WebSocket (starts flowing once WS is open)
+      workletNode.port.onmessage = (event: MessageEvent) => {
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          const pcmBuffer = new Uint8Array(event.data);
+          // Convert to base64
+          let binary = '';
+          const chunkSize = 8192;
+          for (let i = 0; i < pcmBuffer.length; i += chunkSize) {
+            const slice = pcmBuffer.subarray(i, Math.min(i + chunkSize, pcmBuffer.length));
+            binary += String.fromCharCode.apply(null, Array.from(slice));
+          }
+          const base64 = btoa(binary);
+
+          const audioMessage = {
+            realtimeInput: {
+              mediaChunks: [{
+                data: base64,
+                mimeType: 'audio/pcm;rate=16000',
+              }],
+            },
+          };
+          ws.send(JSON.stringify(audioMessage));
+        }
+      };
+
+      // Connect audio graph: mic → worklet (don't connect to destination)
+      srcNode.connect(workletNode);
 
     } catch (err: any) {
       console.error('[LiveAssistant] Start failed:', err);
@@ -298,17 +344,21 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
       setIsConnecting(false);
       cleanup();
     }
-  }, [buildSystemPrompt, enqueueAudio, clearPlayback]);
+  }, [buildSystemPrompt, handleGeminiMessage]);
 
   // --- Cleanup ---
   const cleanup = useCallback(() => {
-    if (sessionRef.current) {
-      try { sessionRef.current.close(); } catch (_) {}
-      sessionRef.current = null;
+    if (wsRef.current) {
+      try { wsRef.current.close(1000); } catch (_) {}
+      wsRef.current = null;
     }
     if (workletNodeRef.current) {
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
+    }
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
     }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(t => t.stop());
@@ -318,12 +368,15 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+    if (playbackCtxRef.current && playbackCtxRef.current.state !== 'closed') {
+      playbackCtxRef.current.close();
+      playbackCtxRef.current = null;
+    }
     clearPlayback();
     setIsConnected(false);
     setIsConnecting(false);
   }, [clearPlayback]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => cleanup();
   }, [cleanup]);
@@ -437,7 +490,6 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
           {isConnected ? (
             <div className="relative">
               <MicOff size={24} />
-              {/* Pulse ring when actively listening */}
               <div className="absolute inset-0 -m-3 border-2 border-red-300 rounded-full animate-ping opacity-50" />
             </div>
           ) : (

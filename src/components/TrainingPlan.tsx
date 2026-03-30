@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, ChevronRight, MapPin, TrendingUp, RefreshCw, CheckCircle2, Bell } from 'lucide-react';
 import { format, addDays, differenceInDays, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { cn } from '../lib/utils';
-import HealthSync from './HealthSync';
 import { getPlans } from '../lib/localStore';
 
 interface TrainingPlanProps {
@@ -161,9 +160,6 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
         
         <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
       </motion.div>
-
-      {/* Health Ecosystem Sync */}
-      <HealthSync user={user} />
 
       {/* Smart Reminders Toggle */}
       {!remindersEnabled && (
