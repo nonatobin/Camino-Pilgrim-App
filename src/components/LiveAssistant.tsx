@@ -9,8 +9,8 @@ import { cn } from '../lib/utils';
 interface LiveAssistantProps {
   user: any;
   profile: any;
-  onClose: () => void
-
+  onClose: () => void;
+}
 
 export default function LiveAssistant({ user, profile, onClose }: LiveAssistantProps) {
   const [isOpen, setIsOpen] = useState(true); // Start open when triggered from App
