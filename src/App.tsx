@@ -8,7 +8,7 @@ import LiveAssistant from './components/LiveAssistant';
 import TranslatePanel from './components/TranslatePanel';
 import Onboarding from './components/Onboarding';
 import { featureFlags } from './config/environment';
-import { Map as MapIcon, MessageSquare } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getProfile, getLocalUser } from './lib/localStore';
 
@@ -48,8 +48,8 @@ export default function App() {
         </AnimatePresence>
 
         {featureFlags.voiceAssistantEnabled && (
-          <button onClick={() => setShowAssistant(true)} className="fixed bottom-32 right-8 w-20 h-20 bg-[#5A5A40] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white">
-            <MessageSquare size={32} />
+          <button onClick={() => setShowAssistant(true)} className="fixed bottom-32 right-8 w-16 h-16 bg-[#5A5A40] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white">
+            <Mic size={28} />
           </button>
         )}
         <AnimatePresence>
