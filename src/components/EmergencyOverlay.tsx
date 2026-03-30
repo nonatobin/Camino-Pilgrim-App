@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, Phone, Users, MapPin, CheckCircle2, X } from 'lucide-react';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+// Emergency alerts stored locally for beta
 
 interface EmergencyOverlayProps {
   user: any;
@@ -27,13 +26,14 @@ export default function EmergencyOverlay({ user, location, onClose }: EmergencyO
   const handleAlertFamily = async () => {
     setIsAutoAlerting(false);
     try {
-      await addDoc(collection(db, 'beta_feedback'), {
-        uid: user.uid,
+      const alerts = JSON.parse(localStorage.getItem('camino_alerts') || '[]');
+      alerts.push({
         userName: user.displayName || 'Pilgrim',
         text: `EMERGENCY: Fall detected at ${location ? `${location.lat}, ${location.lng}` : 'unknown location'}.`,
-        type: 'other',
-        createdAt: serverTimestamp(),
+        type: 'emergency',
+        createdAt: new Date().toISOString(),
       });
+      localStorage.setItem('camino_alerts', JSON.stringify(alerts));
       setAlertSent(true);
     } catch (e) {
       console.error('Failed to send emergency alert', e);

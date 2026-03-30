@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot, collectionGroup } from 'firebase/firestore';
+import { getLogs } from '../lib/localStore';
 import { motion } from 'motion/react';
 import { Users, Activity, Heart, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,27 +10,9 @@ export default function FamilySync() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, we'd query specific family members. 
-    // For this beta, we'll show all logs to demonstrate the sync.
-    const q = query(
-      collectionGroup(db, 'logs'),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newLogs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as TrainingLog[];
-      setLogs(newLogs);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'collectionGroup:logs');
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const localLogs = getLogs().slice(-20).reverse() as TrainingLog[];
+    setLogs(localLogs);
+    setLoading(false);
   }, []);
 
   if (loading) {

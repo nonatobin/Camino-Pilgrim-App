@@ -4,8 +4,7 @@ import { Calendar, ChevronRight, MapPin, TrendingUp, RefreshCw, CheckCircle2, Be
 import { format, addDays, differenceInDays, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { cn } from '../lib/utils';
 import HealthSync from './HealthSync';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { getPlans } from '../lib/localStore';
 
 interface TrainingPlanProps {
   user: any;
@@ -23,17 +22,11 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
   const daysRemaining = differenceInDays(departureDate, today);
   
   useEffect(() => {
-    const plansRef = collection(db, 'users', user.uid, 'plans');
-    const q = query(plansRef, orderBy('updatedAt', 'desc'), limit(1));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setPlan(snapshot.docs[0].data());
-      }
-    }, (err) => handleFirestoreError(err, OperationType.GET, `users/${user.uid}/plans`));
-    
-    return () => unsubscribe();
-  }, [user.uid]);
+    const plans = getPlans();
+    if (plans.length > 0) {
+      setPlan(plans[plans.length - 1]);
+    }
+  }, []);
 
   const schedule = plan?.schedule || [];
 

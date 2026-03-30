@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Camera, X, MessageSquare, Send, CheckCircle2, Volume2, VolumeX, Eye, ShieldCheck } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+// Feedback stored locally for beta
 import { cn } from '../lib/utils';
 
 interface LiveAssistantProps {
@@ -170,13 +169,14 @@ export default function LiveAssistant({ user, profile, onClose }: LiveAssistantP
   const handleBetaFeedback = async () => {
     if (!transcript) return;
     try {
-      await addDoc(collection(db, 'beta_feedback'), {
-        uid: user.uid,
+      const feedback = JSON.parse(localStorage.getItem('camino_feedback') || '[]');
+      feedback.push({
         userName: user.displayName || 'Pilgrim',
         text: transcript,
         type: transcript.toLowerCase().includes('bug') ? 'bug' : 'feature',
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       });
+      localStorage.setItem('camino_feedback', JSON.stringify(feedback));
       setFeedbackSent(true);
       setTimeout(() => setFeedbackSent(false), 3000);
     } catch (e) {

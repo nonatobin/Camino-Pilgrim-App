@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
 import { ArrowRight, MapPin, Calendar, Activity, User as UserIcon, Mic, MicOff, Volume2 } from 'lucide-react';
-import { generateTrainingPlan } from '../lib/trainingEngine';
 import { cn } from '../lib/utils';
 import { parseVoiceInput } from '../services/voiceParser';
+import { saveProfile } from '../lib/localStore';
 
 interface OnboardingProps {
   user: any;
@@ -13,6 +11,16 @@ interface OnboardingProps {
 }
 
 const STEPS = [
+  {
+    id: 'name',
+    title: "What's your name?",
+    subtitle: "So we know what to call you on the trail.",
+    icon: <UserIcon size={40} />,
+    type: 'text',
+    placeholder: 'Your name',
+    field: 'displayName',
+    voicePrompt: "What is your name?"
+  },
   {
     id: 'age',
     title: "How old are you?",
@@ -80,18 +88,22 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     const currentStepConfig = STEPS[currentStep];
     
     // Try Gemini parsing first
-    const parsed = await parseVoiceInput(
-      transcript, 
-      currentStepConfig.type as any, 
-      currentStepConfig.options
-    );
+    try {
+      const parsed = await parseVoiceInput(
+        transcript, 
+        currentStepConfig.type as any, 
+        currentStepConfig.options
+      );
 
-    if (parsed !== null && parsed !== undefined) {
-      setFormData((prev: any) => ({ ...prev, [currentStepConfig.field]: parsed }));
-      return;
+      if (parsed !== null && parsed !== undefined) {
+        setFormData((prev: any) => ({ ...prev, [currentStepConfig.field]: parsed }));
+        return;
+      }
+    } catch (e) {
+      // Gemini not available, fall through to basic parsing
     }
 
-    // Fallback to basic parsing if Gemini fails or is not configured
+    // Fallback to basic parsing
     if (currentStepConfig.type === 'number') {
       const num = transcript.match(/\d+/);
       if (num) {
@@ -109,12 +121,10 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     }
   }, [currentStep]);
 
-  // Update ref to current handler to avoid stale closures
   useEffect(() => {
     handleVoiceInputRef.current = handleVoiceInput;
   }, [handleVoiceInput]);
 
-  // Text to Speech
   const speak = useCallback((text: string) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -124,7 +134,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  // Speech Recognition Setup
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -135,7 +144,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
 
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        console.log('Recognized:', transcript);
         if (handleVoiceInputRef.current) {
           handleVoiceInputRef.current(transcript);
         }
@@ -152,10 +160,8 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     }
   }, [isListening]);
 
-  // Auto-speak on step change
   useEffect(() => {
     speak(STEPS[currentStep].voicePrompt);
-    // Start listening automatically for a better "ambient" experience
     if (recognitionRef.current && !isListening) {
       try {
         recognitionRef.current.start();
@@ -172,15 +178,12 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     } else {
       setIsSubmitting(true);
       try {
-        const userRef = doc(db, 'users', user.uid);
         const finalData = {
           ...formData,
           onboardingCompleted: true
         };
-        await updateDoc(userRef, finalData);
-        
-        // Generate initial training plan
-        await generateTrainingPlan(user, finalData);
+        // Save to localStorage instead of Firestore
+        saveProfile(finalData);
         
         if (recognitionRef.current) recognitionRef.current.stop();
         onComplete();
@@ -222,7 +225,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
             transition={{ duration: 0.4 }}
             className="bg-white rounded-[40px] p-12 shadow-xl border border-[#5A5A40]/5 relative"
           >
-            {/* Voice Status Indicator */}
             <div className="absolute top-8 right-8 flex items-center gap-2">
               <div className={cn(
                 "w-3 h-3 rounded-full",

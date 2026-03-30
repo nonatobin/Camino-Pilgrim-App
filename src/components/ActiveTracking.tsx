@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { OperationType } from '../types';
-import { handleFirestoreError, cn } from '../lib/utils';
+import { addLog } from '../lib/localStore';
+import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, Square, MapPin, Activity, Clock, TrendingUp, CheckCircle2, ShieldAlert } from 'lucide-react';
 import EmergencyOverlay from './EmergencyOverlay';
@@ -148,25 +146,20 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
     setLoading(true);
 
     const pace = distance > 0 ? (distance / (elapsedTime / 3600)) : 0;
-    const path = `users/${user.uid}/logs`;
-
     try {
-      await addDoc(collection(db, path), {
-        uid: user.uid,
+      addLog({
         userName: user.displayName || 'Pilgrim',
-        userPhoto: user.photoURL || null,
         date: new Date().toISOString().split('T')[0],
         distance: parseFloat(distance.toFixed(2)),
         speed: parseFloat(pace.toFixed(2)),
         duration: elapsedTime,
-        createdAt: serverTimestamp(),
         type: 'automated'
       });
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error('Error saving walk log:', error);
     } finally {
       setLoading(false);
     }

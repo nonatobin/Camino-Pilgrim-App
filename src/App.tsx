@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { auth, loginWithGoogle, db, handleFirestoreError, OperationType } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import React, { useState, useCallback } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import ActiveTracking from './components/ActiveTracking';
@@ -11,83 +8,25 @@ import LiveAssistant from './components/LiveAssistant';
 import TranslatePanel from './components/TranslatePanel';
 import Onboarding from './components/Onboarding';
 import { featureFlags } from './config/environment';
-import { Map as MapIcon, LogIn, MessageSquare } from 'lucide-react';
+import { Map as MapIcon, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getProfile, getLocalUser } from './lib/localStore';
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(getProfile());
   const [activeTab, setActiveTab] = useState('plan');
   const [showAssistant, setShowAssistant] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      if (authUser) {
-        setUser(authUser);
-        const userRef = doc(db, 'users', authUser.uid);
-        const unsubProfile = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data());
-          } else {
-            setDoc(userRef, {
-              uid: authUser.uid,
-              displayName: authUser.displayName,
-              email: authUser.email,
-              photoURL: authUser.photoURL,
-              createdAt: serverTimestamp(),
-              onboardingCompleted: false
-            }).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${authUser.uid}`));
-          }
-          setLoading(false);
-        }, (err) => handleFirestoreError(err, OperationType.GET, `users/${authUser.uid}`));
-        return () => unsubProfile();
-      } else {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
+  const user = getLocalUser();
+
+  const handleOnboardingComplete = useCallback(() => {
+    // Re-read profile from localStorage after onboarding saves it
+    setProfile(getProfile());
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 bg-[#5A5A40] rounded-full flex items-center justify-center text-white animate-pulse">
-            <MapIcon size={32} />
-          </div>
-          <p className="text-[#5A5A40] font-serif italic text-xl">Preparing your journey...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center p-6">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full bg-white rounded-[40px] p-12 shadow-xl text-center border border-[#5A5A40]/5">
-          <div className="w-20 h-20 bg-[#5A5A40] rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-lg">
-            <MapIcon size={40} />
-          </div>
-          <h1 className="text-4xl font-bold text-[#5A5A40] mb-4 font-serif">Camino Pilgrim</h1>
-          <p className="text-gray-500 text-xl mb-12 font-serif italic leading-relaxed">
-            Your companion for the journey to Santiago de Compostela.
-          </p>
-          <button onClick={loginWithGoogle} className="w-full py-6 bg-[#5A5A40] text-white rounded-full font-bold text-xl flex items-center justify-center gap-4 hover:bg-[#4A4A30] active:scale-[0.98] transition-all shadow-lg">
-            <LogIn size={24} /> Sign in with Google
-          </button>
-          <p className="mt-8 text-xs text-gray-400 uppercase tracking-widest font-bold">
-            Secure Multiplayer Training Sync
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (profile && !profile.onboardingCompleted) {
-    return <Onboarding user={user} onComplete={() => {}} />;
+  // Show onboarding if no profile or onboarding not completed
+  if (!profile || !profile.onboardingCompleted) {
+    return <Onboarding user={user} onComplete={handleOnboardingComplete} />;
   }
 
   return (

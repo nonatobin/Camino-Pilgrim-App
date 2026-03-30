@@ -1,5 +1,5 @@
 import React from "react";
-import { auth, logout } from "../firebase";
+// No Firebase auth — using local storage
 import { LogOut, User, Map as MapIcon, Activity, Users, Languages } from "lucide-react";
 import { cn } from "../lib/utils";
 import { featureFlags } from "../config/environment";
@@ -48,11 +48,11 @@ export default function Layout({
                 {user.displayName}
               </span>{" "}
               <button
-                onClick={logout}
+                onClick={() => { localStorage.clear(); window.location.reload(); }}
                 className="text-xs text-[#5A5A40] hover:underline flex items-center gap-1"
               >
                 {" "}
-                <LogOut size={12} /> Sign Out{" "}
+                <LogOut size={12} /> Reset Profile{" "}
               </button>{" "}
             </div>{" "}
             {user.photoURL ? (
