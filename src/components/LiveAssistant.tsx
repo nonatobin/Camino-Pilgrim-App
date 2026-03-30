@@ -321,10 +321,10 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
 
           const audioMessage = {
             realtimeInput: {
-              mediaChunks: [{
+              audio: {
                 data: base64,
                 mimeType: 'audio/pcm;rate=16000',
-              }],
+              },
             },
           };
           ws.send(JSON.stringify(audioMessage));
