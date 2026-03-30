@@ -7,6 +7,7 @@ import TrainingPlan from './components/TrainingPlan';
 import FamilySync from './components/FamilySync';
 import LiveAssistant from './components/LiveAssistant';
 import TranslatePanel from './components/TranslatePanel';
+import PomodoroTimer from './components/PomodoroTimer';
 import Onboarding from './components/Onboarding';
 import { featureFlags } from './config/environment';
 import { Mic } from 'lucide-react';
@@ -42,6 +43,7 @@ export default function App() {
               >
                 {activeTab === 'plan' && <TrainingPlan user={user} profile={profile} />}
                 {activeTab === 'track' && <ActiveTracking user={user} />}
+                {activeTab === 'pomodoro' && <PomodoroTimer />}
                 {activeTab === 'family' && featureFlags.familySyncEnabled && <FamilySync user={user} />}
                 {activeTab === 'translate' && featureFlags.translateEnabled && <TranslatePanel />}
               </motion.div>

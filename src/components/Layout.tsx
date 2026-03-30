@@ -1,6 +1,6 @@
 import React from "react";
 // No Firebase auth — using local storage
-import { LogOut, User, Map as MapIcon, Activity, Users, Languages } from "lucide-react";
+import { LogOut, User, Map as MapIcon, Activity, Users, Languages, Timer } from "lucide-react";
 import { cn } from "../lib/utils";
 import { featureFlags } from "../config/environment";
 interface LayoutProps {
@@ -18,6 +18,7 @@ export default function Layout({
   const allTabs = [
     { id: "plan", label: "Training Plan", icon: MapIcon, enabled: true },
     { id: "track", label: "Start Walk", icon: Activity, enabled: true },
+    { id: "pomodoro", label: "Focus", icon: Timer, enabled: true },
     { id: "family", label: "Family Sync", icon: Users, enabled: featureFlags.familySyncEnabled },
     { id: "translate", label: "Translate", icon: Languages, enabled: featureFlags.translateEnabled },
   ];
