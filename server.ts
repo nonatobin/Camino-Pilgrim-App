@@ -2,8 +2,15 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import { google } from "googleapis";
 import cookieSession from "cookie-session";
+
+// googleapis is optional — Calendar OAuth routes are disabled when it's missing
+let google: any = null;
+try {
+  google = (await import("googleapis")).google;
+} catch {
+  console.warn("googleapis not installed — Calendar OAuth routes disabled");
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,96 +28,103 @@ async function startServer() {
     sameSite: 'none'
   }));
 
-  const getOAuth2Client = () => {
-    if (!process.env.APP_URL) {
-      console.warn("APP_URL not set, redirect URI might be incorrect");
-    }
-    return new google.auth.OAuth2(
-      process.env.GOOGLE_CALENDAR_CLIENT_ID,
-      process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-      `${process.env.APP_URL || ''}/auth/calendar/callback`
-    );
-  };
-
   // API routes FIRST
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
-  // OAuth URL for Calendar
-  app.get("/api/auth/calendar/url", (req, res) => {
-    const client = getOAuth2Client();
-    const url = client.generateAuthUrl({
-      access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/calendar.events'],
-      prompt: 'consent'
-    });
-    res.json({ url });
-  });
-
-  // OAuth Callback for Calendar
-  app.get("/auth/calendar/callback", async (req, res) => {
-    const { code } = req.query;
-    const client = getOAuth2Client();
-    try {
-      const { tokens } = await client.getToken(code as string);
-      (req.session as any).tokens = tokens;
-      res.send(`
-        <html>
-          <body>
-            <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'CALENDAR_AUTH_SUCCESS' }, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
-              }
-            </script>
-            <p>Authentication successful. This window should close automatically.</p>
-          </body>
-        </html>
-      `);
-    } catch (error) {
-      console.error("Calendar OAuth error:", error);
-      res.status(500).send("Authentication failed");
-    }
-  });
-
-  // Sync to Calendar
-  app.post("/api/calendar/sync", async (req, res) => {
-    const tokens = (req.session as any).tokens;
-    if (!tokens) return res.status(401).json({ error: "Not authenticated with Calendar" });
-
-    const { events } = req.body; // Array of { summary, start, end }
-    const client = getOAuth2Client();
-    client.setCredentials(tokens);
-    const calendar = google.calendar({ version: 'v3', auth: client });
-
-    try {
-      for (const event of events) {
-        await calendar.events.insert({
-          calendarId: 'primary',
-          requestBody: {
-            summary: event.summary,
-            description: 'Camino Pilgrim Training Walk',
-            start: { dateTime: event.start },
-            end: { dateTime: event.end },
-            reminders: {
-              useDefault: false,
-              overrides: [
-                { method: 'popup', minutes: 10 }
-              ]
-            }
-          }
-        });
+  // Calendar OAuth routes — only registered when googleapis is available
+  if (google) {
+    const getOAuth2Client = () => {
+      if (!process.env.APP_URL) {
+        console.warn("APP_URL not set, redirect URI might be incorrect");
       }
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Calendar sync error:", error);
-      const message = error?.response?.data?.error?.message || "Sync failed";
-      res.status(500).json({ error: message });
-    }
-  });
+      return new google.auth.OAuth2(
+        process.env.GOOGLE_CALENDAR_CLIENT_ID,
+        process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+        `${process.env.APP_URL || ''}/auth/calendar/callback`
+      );
+    };
+
+    app.get("/api/auth/calendar/url", (req, res) => {
+      const client = getOAuth2Client();
+      const url = client.generateAuthUrl({
+        access_type: 'offline',
+        scope: ['https://www.googleapis.com/auth/calendar.events'],
+        prompt: 'consent'
+      });
+      res.json({ url });
+    });
+
+    app.get("/auth/calendar/callback", async (req, res) => {
+      const { code } = req.query;
+      const client = getOAuth2Client();
+      try {
+        const { tokens } = await client.getToken(code as string);
+        (req.session as any).tokens = tokens;
+        res.send(`
+          <html>
+            <body>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'CALENDAR_AUTH_SUCCESS' }, '*');
+                  window.close();
+                } else {
+                  window.location.href = '/';
+                }
+              </script>
+              <p>Authentication successful. This window should close automatically.</p>
+            </body>
+          </html>
+        `);
+      } catch (error) {
+        console.error("Calendar OAuth error:", error);
+        res.status(500).send("Authentication failed");
+      }
+    });
+
+    app.post("/api/calendar/sync", async (req, res) => {
+      const tokens = (req.session as any).tokens;
+      if (!tokens) return res.status(401).json({ error: "Not authenticated with Calendar" });
+
+      const { events } = req.body;
+      const client = getOAuth2Client();
+      client.setCredentials(tokens);
+      const calendar = google.calendar({ version: 'v3', auth: client });
+
+      try {
+        for (const event of events) {
+          await calendar.events.insert({
+            calendarId: 'primary',
+            requestBody: {
+              summary: event.summary,
+              description: 'Camino Pilgrim Training Walk',
+              start: { dateTime: event.start },
+              end: { dateTime: event.end },
+              reminders: {
+                useDefault: false,
+                overrides: [
+                  { method: 'popup', minutes: 10 }
+                ]
+              }
+            }
+          });
+        }
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Calendar sync error:", error);
+        const message = error?.response?.data?.error?.message || "Sync failed";
+        res.status(500).json({ error: message });
+      }
+    });
+  } else {
+    // Stub routes when googleapis is not installed
+    const unavailable = (_req: any, res: any) =>
+      res.status(503).json({ error: "Calendar integration unavailable — googleapis not installed" });
+    app.get("/api/auth/calendar/url", unavailable);
+    app.get("/auth/calendar/callback", unavailable);
+    app.post("/api/calendar/sync", unavailable);
+  }
 
   // ElevenLabs TTS proxy (keeps API key server-side)
   app.post("/api/tts", async (req, res) => {
