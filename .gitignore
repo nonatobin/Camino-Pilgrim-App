@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Generated audio files (keep .gitkeep)
+public/audio/*.mp3
+public/audio/*.wav

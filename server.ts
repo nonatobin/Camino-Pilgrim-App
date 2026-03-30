@@ -112,6 +112,49 @@ async function startServer() {
     }
   });
 
+  // ElevenLabs TTS proxy (keeps API key server-side)
+  app.post("/api/tts", async (req, res) => {
+    const apiKey = process.env.Predatory_Saltwater_Crocodile || process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "ElevenLabs API key not configured." });
+
+    const { text, voiceId, modelId } = req.body ?? {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: 'Missing or empty "text" field.' });
+    }
+    if (text.length > 5000) {
+      return res.status(400).json({ error: "Text exceeds 5000 character limit." });
+    }
+
+    const resolvedVoiceId = voiceId || process.env.ELEVEN_LABS_NONA_VOICE_ID || process.env.ELEVENLABS_VOICE_ID;
+    if (!resolvedVoiceId) return res.status(500).json({ error: "Voice ID not configured." });
+
+    try {
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}`, {
+        method: "POST",
+        headers: { "xi-api-key": apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
+        body: JSON.stringify({
+          text: text.trim(),
+          model_id: modelId || "eleven_multilingual_v2",
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error("ElevenLabs error:", response.status, body);
+        return res.status(response.status).json({ error: "ElevenLabs API request failed.", detail: body });
+      }
+
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buf = Buffer.from(await response.arrayBuffer());
+      return res.send(buf);
+    } catch (err) {
+      console.error("TTS request failed:", err);
+      return res.status(500).json({ error: "Internal server error during TTS generation." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
