@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, MapPin, Calendar, Activity, User as UserIcon, Volume2 } from 'lucide-react';
+import { ArrowRight, MapPin, Calendar, Activity, User as UserIcon, Mic, MicOff, Volume2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { saveProfile } from '../lib/localStore';
 import { generateTrainingPlan } from '../lib/trainingEngine';
@@ -19,6 +19,7 @@ const STEPS = [
     type: 'text',
     placeholder: 'Your name',
     field: 'displayName',
+    voiceHint: 'Say your name',
   },
   {
     id: 'age',
@@ -28,6 +29,7 @@ const STEPS = [
     type: 'number',
     placeholder: 'Enter your age',
     field: 'age',
+    voiceHint: 'Say your age',
   },
   {
     id: 'baseline',
@@ -37,6 +39,7 @@ const STEPS = [
     type: 'number',
     placeholder: 'Distance in miles',
     field: 'physicalBaseline',
+    voiceHint: 'Say a number',
   },
   {
     id: 'departure',
@@ -46,6 +49,7 @@ const STEPS = [
     type: 'date',
     placeholder: '',
     field: 'departureDate',
+    voiceHint: 'Say a date',
   },
   {
     id: 'start',
@@ -55,6 +59,7 @@ const STEPS = [
     type: 'text',
     placeholder: 'Starting location',
     field: 'startLocation',
+    voiceHint: 'Say a city name',
   },
   {
     id: 'end',
@@ -64,17 +69,152 @@ const STEPS = [
     type: 'choice',
     options: ['Santiago de Compostela', 'Finisterre'],
     field: 'endDestination',
-  }
+    voiceHint: 'Say Santiago or Finisterre',
+  },
 ];
+
+// Parse spoken text into the right value for each field type
+function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string | number | null {
+  const raw = transcript.trim();
+  if (!raw) return null;
+
+  if (step.type === 'number') {
+    // Handle spoken numbers like "sixty five" or "5"
+    const wordNumbers: Record<string, number> = {
+      zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
+      six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+      eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+      sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+      thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+    };
+    // Try direct number parse first
+    const directNum = parseFloat(raw.replace(/[^0-9.]/g, ''));
+    if (!isNaN(directNum) && directNum > 0) return directNum;
+
+    // Try word-to-number for simple cases like "sixty five"
+    const words = raw.toLowerCase().split(/[\s-]+/);
+    let total = 0;
+    for (const w of words) {
+      if (wordNumbers[w] !== undefined) total += wordNumbers[w];
+    }
+    if (total > 0) return total;
+
+    return null;
+  }
+
+  if (step.type === 'date') {
+    // Try to parse spoken date — Chrome speech usually gives clean text
+    // Handle "June 15th 2026", "June 15 2026", etc.
+    const dateStr = raw.replace(/(st|nd|rd|th)/gi, '').trim();
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2025) {
+      // Format as YYYY-MM-DD for the date input
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return null;
+  }
+
+  if (step.type === 'choice' && step.options) {
+    // Fuzzy match against options
+    const lower = raw.toLowerCase();
+    for (const option of step.options) {
+      if (lower.includes(option.toLowerCase().split(' ')[0].toLowerCase())) {
+        return option;
+      }
+    }
+    // Try first word match
+    if (lower.includes('santiago')) return 'Santiago de Compostela';
+    if (lower.includes('finis') || lower.includes('fisterra')) return 'Finisterre';
+    return null;
+  }
+
+  // Text fields — capitalize first letter of each word
+  return raw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
 
 export default function Onboarding({ user, onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceText, setVoiceText] = useState('');
+  const recognitionRef = useRef<any>(null);
 
   const step = STEPS[currentStep];
 
+  // --- Speech Recognition ---
+  const startListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      // Fallback: no speech recognition available
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setVoiceText(transcript);
+
+      // When we get a final result, parse and apply it
+      if (event.results[event.results.length - 1].isFinal) {
+        const parsed = parseVoiceForField(transcript, step);
+        if (parsed !== null) {
+          setFormData((prev: any) => ({ ...prev, [step.field]: parsed }));
+        }
+        setIsListening(false);
+        setVoiceText('');
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('[Onboarding] Speech error:', event.error);
+      setIsListening(false);
+      setVoiceText('');
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+    setIsListening(true);
+    setVoiceText('');
+  }, [step]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setVoiceText('');
+  }, []);
+
+  const toggleVoice = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  // Check if SpeechRecognition is available (Chrome, Edge — not Safari)
+  const hasSpeechRecognition = typeof window !== 'undefined' &&
+    ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
   const handleNext = async () => {
+    stopListening();
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -83,16 +223,13 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
         const finalData = {
           ...formData,
           displayName: formData.displayName || 'Pilgrim',
-          onboardingCompleted: true
+          onboardingCompleted: true,
         };
         saveProfile(finalData);
-
-        // Generate initial training plan
         await generateTrainingPlan(user, finalData);
-
         onComplete();
       } catch (error) {
-        console.error("Error saving onboarding data:", error);
+        console.error('Error saving onboarding data:', error);
       } finally {
         setIsSubmitting(false);
       }
@@ -100,6 +237,7 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
   };
 
   const handleBack = () => {
+    stopListening();
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
@@ -110,8 +248,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     setFormData({ ...formData, [step.field]: value });
   };
 
-  const isCurrentStepValid = formData[step.field] !== undefined && formData[step.field] !== '' && !isNaN(formData[step.field] as any) === false;
-  // Simpler validity check
   const stepValue = formData[step.field];
   const isValid = stepValue !== undefined && stepValue !== '' && String(stepValue).trim() !== '';
 
@@ -148,12 +284,12 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
             <h2 className="text-4xl font-bold text-[#5A5A40] mb-4 font-serif">
               {step.title}
             </h2>
-            <p className="text-gray-500 text-xl mb-12 font-serif italic">
+            <p className="text-gray-500 text-xl mb-8 font-serif italic">
               {step.subtitle}
             </p>
 
             {/* Input area */}
-            <div className="relative mb-12">
+            <div className="relative mb-6">
               {step.type === 'choice' ? (
                 <div className="grid grid-cols-1 gap-4">
                   {step.options?.map((option) => (
@@ -161,10 +297,10 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
                       key={option}
                       onClick={() => setFormData({ ...formData, [step.field]: option })}
                       className={cn(
-                        "w-full py-8 px-8 rounded-3xl text-2xl font-serif transition-all border-2 text-left flex items-center justify-between",
+                        'w-full py-8 px-8 rounded-3xl text-2xl font-serif transition-all border-2 text-left flex items-center justify-between',
                         formData[step.field] === option
-                          ? "bg-[#5A5A40] text-white border-[#5A5A40] shadow-lg"
-                          : "bg-[#f5f5f0] text-[#5A5A40] border-transparent hover:border-[#5A5A40]/20"
+                          ? 'bg-[#5A5A40] text-white border-[#5A5A40] shadow-lg'
+                          : 'bg-[#f5f5f0] text-[#5A5A40] border-transparent hover:border-[#5A5A40]/20'
                       )}
                     >
                       {option}
@@ -173,19 +309,68 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
                   ))}
                 </div>
               ) : (
-                <input
-                  type={step.type}
-                  placeholder={step.placeholder}
-                  value={formData[step.field] || ''}
-                  onChange={handleInputChange}
-                  className="w-full bg-[#f5f5f0] border-none rounded-3xl py-6 px-8 text-2xl text-[#5A5A40] focus:ring-4 focus:ring-[#5A5A40]/20 transition-all font-serif"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && isValid) handleNext();
-                  }}
-                />
+                <div className="flex gap-3 items-center">
+                  <input
+                    type={step.type}
+                    placeholder={step.placeholder}
+                    value={formData[step.field] || ''}
+                    onChange={handleInputChange}
+                    className="flex-1 bg-[#f5f5f0] border-none rounded-3xl py-6 px-8 text-2xl text-[#5A5A40] focus:ring-4 focus:ring-[#5A5A40]/20 transition-all font-serif"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && isValid) handleNext();
+                    }}
+                  />
+                  {/* Mic button inline with input */}
+                  {hasSpeechRecognition && (
+                    <button
+                      onClick={toggleVoice}
+                      className={cn(
+                        'w-14 h-14 rounded-full flex items-center justify-center transition-all shrink-0 shadow-md',
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-[#5A5A40] text-white hover:bg-[#4A4A30] active:scale-95'
+                      )}
+                      aria-label={isListening ? 'Stop listening' : 'Speak your answer'}
+                    >
+                      {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
+
+            {/* Voice feedback */}
+            {isListening && (
+              <div className="mb-6 bg-[#5A5A40]/5 rounded-2xl px-5 py-3 flex items-center gap-3">
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:0.15s]" />
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:0.3s]" />
+                </div>
+                <span className="text-sm text-[#5A5A40]">
+                  {voiceText || step.voiceHint || 'Listening...'}
+                </span>
+              </div>
+            )}
+
+            {/* Mic button for choice step */}
+            {step.type === 'choice' && hasSpeechRecognition && (
+              <div className="mb-6 flex justify-center">
+                <button
+                  onClick={toggleVoice}
+                  className={cn(
+                    'flex items-center gap-3 px-6 py-3 rounded-full transition-all text-sm font-semibold',
+                    isListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-[#5A5A40]/10 text-[#5A5A40] hover:bg-[#5A5A40]/20'
+                  )}
+                >
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                  {isListening ? 'Stop' : 'Or say it'}
+                </button>
+              </div>
+            )}
 
             {/* Navigation buttons */}
             <div className="flex gap-4">
@@ -201,7 +386,7 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
                 onClick={handleNext}
                 disabled={!isValid || isSubmitting}
                 className={cn(
-                  "flex-1 py-6 rounded-full font-bold text-xl flex items-center justify-center gap-4 transition-all shadow-lg",
+                  'flex-1 py-6 rounded-full font-bold text-xl flex items-center justify-center gap-4 transition-all shadow-lg',
                   isValid && !isSubmitting
                     ? 'bg-[#5A5A40] text-white hover:bg-[#4A4A30] active:scale-[0.98]'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
