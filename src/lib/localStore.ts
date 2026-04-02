@@ -56,6 +56,21 @@ export function addLog(log: any): void {
   localStorage.setItem(key('logs'), JSON.stringify(logs));
 }
 
+export function getCalendarSync(): any | null {
+  try {
+    const raw = localStorage.getItem(key('calendarSync'));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCalendarSync(data: any): void {
+  const existing = getCalendarSync() || {};
+  const merged = { ...existing, ...data };
+  localStorage.setItem(key('calendarSync'), JSON.stringify(merged));
+}
+
 export function getLeaderboard(): any[] {
   try {
     const raw = localStorage.getItem(key('leaderboard'));
