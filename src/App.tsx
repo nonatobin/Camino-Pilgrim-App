@@ -32,7 +32,7 @@ export default function App() {
         {(!profile || !profile.onboardingCompleted) ? (
           <Onboarding user={user} onComplete={handleOnboardingComplete} />
         ) : (
-          <Layout user={user} activeTab={activeTab} setActiveTab={setActiveTab}>
+          <Layout user={user} profile={profile} activeTab={activeTab} setActiveTab={setActiveTab}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}

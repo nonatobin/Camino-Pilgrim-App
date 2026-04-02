@@ -12,6 +12,16 @@ interface OnboardingProps {
 
 const STEPS = [
   {
+    id: 'avatar',
+    title: 'Choose your Pilgrim',
+    subtitle: 'Pick an emoji to personalize your journey.',
+    icon: <UserIcon size={40} />,
+    type: 'emoji',
+    options: ['🥾', '🤠', '🌞', '🐌', '🌻', '🎒', '🇪🇸', '🥖'],
+    field: 'avatar',
+    voiceHint: '',
+  },
+  {
     id: 'name',
     title: "What's your name?",
     subtitle: "So we know what to call you on the trail.",
@@ -290,7 +300,24 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
 
             {/* Input area */}
             <div className="relative mb-6">
-              {step.type === 'choice' ? (
+              {step.type === 'emoji' ? (
+                <div className="grid grid-cols-4 gap-4">
+                  {step.options?.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setFormData({ ...formData, [step.field]: option })}
+                      className={cn(
+                        'aspect-square flex items-center justify-center text-5xl rounded-[24px] transition-all border-4',
+                        formData[step.field] === option
+                          ? 'bg-white border-[#5A5A40] shadow-lg scale-105'
+                          : 'bg-[#f5f5f0] border-transparent hover:border-[#5A5A40]/20'
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : step.type === 'choice' ? (
                 <div className="grid grid-cols-1 gap-4">
                   {step.options?.map((option) => (
                     <button

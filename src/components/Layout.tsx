@@ -8,18 +8,20 @@ interface LayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   user: any;
+  profile?: any;
 }
 export default function Layout({
   children,
   activeTab,
   setActiveTab,
   user,
+  profile,
 }: LayoutProps) {
   const allTabs = [
     { id: "plan", label: "Training Plan", icon: MapIcon, enabled: true },
     { id: "track", label: "Start Walk", icon: Activity, enabled: true },
     { id: "pomodoro", label: "Focus", icon: Timer, enabled: true },
-    { id: "family", label: "Family Sync", icon: Users, enabled: featureFlags.familySyncEnabled },
+    { id: "family", label: "Leaderboard", icon: Users, enabled: featureFlags.familySyncEnabled },
     { id: "translate", label: "Translate", icon: Languages, enabled: featureFlags.translateEnabled },
   ];
   const tabs = allTabs.filter(t => t.enabled);
@@ -46,7 +48,7 @@ export default function Layout({
             <div className="hidden sm:flex flex-col items-end">
               {" "}
               <span className="text-sm font-medium">
-                {user.displayName}
+                {profile?.displayName || user.displayName}
               </span>{" "}
               <button
                 onClick={() => { localStorage.clear(); window.location.reload(); }}
@@ -56,7 +58,11 @@ export default function Layout({
                 <LogOut size={12} /> Reset Profile{" "}
               </button>{" "}
             </div>{" "}
-            {user.photoURL ? (
+            {profile?.avatar ? (
+              <div className="w-10 h-10 rounded-full border-2 border-[#5A5A40]/20 bg-[#f5f5f0] flex items-center justify-center text-2xl shadow-sm">
+                {profile.avatar}
+              </div>
+            ) : user.photoURL ? (
               <img
                 src={user.photoURL}
                 alt={user.displayName}
