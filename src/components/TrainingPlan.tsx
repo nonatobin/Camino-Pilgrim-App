@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, ChevronRight, TrendingUp, RefreshCw, CheckCircle2, Bell, Download, AlertCircle, Check } from 'lucide-react';
-import { format, differenceInDays, startOfToday, parseISO } from 'date-fns';
+import { Calendar, ChevronRight, TrendingUp, RefreshCw, CheckCircle2, Bell, Download, AlertCircle, Check, CalendarPlus, X } from 'lucide-react';
+import { format, differenceInDays, startOfToday, parseISO, isBefore } from 'date-fns';
 import { cn } from '../lib/utils';
 import { getPlans, getLogs, getCalendarSync, saveCalendarSync } from '../lib/localStore';
 
@@ -186,114 +186,164 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
         className="bg-[#5A5A40] text-white rounded-[40px] p-8 md:p-10 shadow-xl relative overflow-hidden"
       >
         <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2 text-white/60 uppercase tracking-widest font-bold text-sm">
-              <Calendar size={16} /> Countdown to Camino
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {!isCalendarConnected ? (
-                <>
-                  <button 
-                    onClick={handleGoogleSync}
-                    disabled={syncing}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all"
-                  >
-                    {syncing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                    Connect Google Cal
-                  </button>
-                  <button 
-                    onClick={downloadICS}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all"
-                  >
-                    <Download size={14} /> Apple Calendar (.ics)
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest bg-green-500/20 text-green-300">
-                    <Check size={14} /> Connected
-                  </div>
-                  <button 
-                    onClick={handleGoogleSync}
-                    disabled={syncing}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all"
-                  >
-                    {syncing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                    Sync Next 7 Days
-                  </button>
-                  <button 
-                    onClick={handleDisconnect}
-                    className="flex items-center gap-2 text-white/50 hover:text-white px-2 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all"
-                  >
-                    Disconnect
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Sync Status Feedback */}
-          <AnimatePresence>
-            {syncStatus === 'success' && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mb-6 p-4 bg-green-500/20 text-green-50 rounded-2xl flex items-center gap-3 border border-green-500/30">
-                <CheckCircle2 size={24} className="text-green-400" />
-                <div>
-                  <h4 className="font-bold">Events added successfully!</h4>
-                  <p className="text-sm opacity-80">Training calendar has been synchronized.</p>
-                </div>
-              </motion.div>
-            )}
-            
-            {syncStatus === 'error' && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mb-6 p-4 bg-red-500/20 text-red-100 rounded-2xl flex items-start gap-3 border border-red-500/30">
-                <AlertCircle size={24} className="text-red-400 flex-shrink-0" />
-                <div>
-                  <h4 className="font-bold">Sync Error</h4>
-                  <p className="text-sm opacity-90">{syncErrorMsg}</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex items-end gap-4 mb-8">
-            <span className="text-8xl font-bold leading-none">{daysRemaining}</span>
-            <span className="text-2xl font-medium mb-2">Days to Departure</span>
+          <div className="flex items-center gap-2 text-white/60 uppercase tracking-widest font-bold text-sm mb-4">
+            <Calendar size={16} /> Training Plan
           </div>
           
-          <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/10">
-            <div className="space-y-1">
-              <span className="text-white/60 text-xs uppercase tracking-widest font-bold">Departure Date</span>
-              <p className="text-xl font-serif italic">{format(departureDate, 'MMMM do, yyyy')}</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-white/60 text-xs uppercase tracking-widest font-bold">Target Pace</span>
-              <p className="text-xl font-serif italic">3.0 MPH</p>
-            </div>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">Countdown to Camino</h2>
+          <p className="text-xl font-serif italic mb-8 max-w-lg opacity-90 leading-snug">
+            A steady ramp to get you to the Camino start strong—without overtraining.
+          </p>
+
+          <div className="flex items-end gap-3 mb-8">
+            <span className="text-6xl md:text-8xl font-bold leading-none">{daysRemaining}</span>
+            <span className="text-xl md:text-2xl font-medium mb-1 md:mb-2">Days Out</span>
+          </div>
+          
+          <div className="pt-6 border-t border-white/10 space-y-2">
+            <p className="text-white/80 text-sm font-medium">
+              Built from: your start date + your current baseline. You can change this anytime.
+            </p>
           </div>
         </div>
-        
-        <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
       </motion.div>
 
-      {/* Smart Reminders Toggle */}
-      {!remindersEnabled && (
-        <button 
-          onClick={requestNotifications}
-          className="w-full bg-white p-6 rounded-[32px] border border-[#5A5A40]/10 flex items-center justify-between hover:bg-gray-50 transition-all"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#5A5A40]/5 rounded-2xl flex items-center justify-center text-[#5A5A40]">
-              <Bell size={24} />
+      {/* Utility Panel: Calendar Sync & Reminders */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Calendar Sync Card */}
+        <div className="bg-white p-6 rounded-[32px] border border-[#5A5A40]/10 flex flex-col justify-between h-full shadow-sm">
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-[#5A5A40]/5 rounded-xl flex items-center justify-center text-[#5A5A40]">
+                <CalendarPlus size={20} />
+              </div>
+              <h4 className="font-bold text-[#1a1a1a] text-lg">Calendar Sync</h4>
             </div>
-            <div className="text-left">
-              <h4 className="font-bold text-[#1a1a1a]">Enable Smart Reminders</h4>
-              <p className="text-sm text-gray-400">Get notified 10 minutes before your walk.</p>
-            </div>
+            
+            {!isCalendarConnected ? (
+              <>
+                <div className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3">
+                  <X size={12} /> Not connected
+                </div>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  We can schedule suggested training walks so they show up where you already live.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3 border border-green-100">
+                  <Check size={12} /> Connected
+                </div>
+                <p className="text-sm text-gray-500 leading-relaxed mb-1">
+                  Connected to Local System / Default Calendar
+                </p>
+                {lastSyncTime && (
+                  <p className="text-xs text-gray-400 font-medium">
+                    Last synced: {format(new Date(lastSyncTime), 'MMM d, h:mm a')}
+                  </p>
+                )}
+              </>
+            )}
           </div>
-          <ChevronRight className="text-gray-300" size={20} />
-        </button>
-      )}
+
+          <div className="space-y-2 mt-auto">
+            <AnimatePresence>
+              {syncStatus === 'success' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-xs font-bold text-green-600 mb-2 truncate">
+                  Successfully synced 7 upcoming events.
+                </motion.div>
+              )}
+              {syncStatus === 'error' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-xs font-bold text-red-500 mb-2">
+                  {syncErrorMsg || "Error syncing calendar. Try again."}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!isCalendarConnected ? (
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={handleGoogleSync}
+                  disabled={syncing}
+                  className="w-full bg-[#5A5A40] text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#4A4A30] active:scale-[0.98] transition-all"
+                >
+                  {syncing ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  Connect Calendar
+                </button>
+                <button 
+                  onClick={downloadICS}
+                  className="w-full bg-white text-[#5A5A40] border border-[#5A5A40]/20 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#5A5A40]/5 active:scale-[0.98] transition-all"
+                >
+                  <Download size={16} /> Apple Calendar (.ics)
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={handleGoogleSync}
+                  disabled={syncing}
+                  className="w-full bg-[#5A5A40] text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#4A4A30] active:scale-[0.98] transition-all"
+                >
+                  {syncing ? <RefreshCw size={16} className="animate-spin" /> : <CalendarPlus size={16} />}
+                  Add next 7 days to calendar
+                </button>
+                <button 
+                  onClick={handleDisconnect}
+                  className="w-full bg-red-50 text-red-600 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-100 active:scale-[0.98] transition-all"
+                >
+                  Remove suggested events
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reminders Toggle Card */}
+        <div className="bg-white p-6 rounded-[32px] border border-[#5A5A40]/10 flex flex-col justify-between shadow-sm">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-[#5A5A40]/5 rounded-xl flex items-center justify-center text-[#5A5A40]">
+                <Bell size={20} />
+              </div>
+              <h4 className="font-bold text-[#1a1a1a] text-lg">Smart Reminders</h4>
+            </div>
+            {!remindersEnabled ? (
+              <p className="text-sm text-gray-500 leading-relaxed mt-4">
+                Receive subtle, encouraging nudges for walks, hydration, and breathing. We adapt to your pattern. No guilt ever.
+              </p>
+            ) : (
+               <div className="mt-4">
+                 <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3 border border-green-100">
+                    <Check size={12} /> Active
+                  </div>
+                 <p className="text-sm text-gray-500 leading-relaxed">
+                   Notifications are enabled. You will gently be reminded of active targets throughout your day.
+                 </p>
+               </div>
+            )}
+          </div>
+          
+          <div className="mt-6">
+            {!remindersEnabled ? (
+              <button 
+                onClick={requestNotifications}
+                className="w-full bg-white text-[#5A5A40] border border-[#5A5A40]/20 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#5A5A40]/5 active:scale-[0.98] transition-all"
+              >
+                Enable Notifications
+              </button>
+            ) : (
+              <button 
+                onClick={() => setRemindersEnabled(false)}
+                className="w-full bg-gray-50 text-gray-400 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+              >
+                Active
+                <CheckCircle2 size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 30-Day Schedule (Suggested vs Accomplished) */}
       <div className="space-y-6">
@@ -309,6 +359,7 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
           {schedule.slice(0, 14).map((day: any, i: number) => {
             const dayDate = parseISO(day.date);
             const isRest = day.targetDistance < 1;
+            const isPast = isBefore(dayDate, today);
             
             // Accomplished model matching logic
             const dayLogs = logs.filter(l => l.date === day.date);
@@ -374,8 +425,13 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
                     </div>
                   ) : (
                     <div className="text-left w-full md:text-right hidden md:block">
-                       <span className="px-4 py-2 rounded-full border border-dashed border-gray-300 text-gray-400 text-xs font-bold uppercase tracking-widest">
-                         Pending Log
+                       <span className={cn(
+                         "px-4 py-2 rounded-full border border-dashed text-xs font-bold uppercase tracking-widest",
+                         isPast 
+                           ? "border-blue-200 text-blue-400 bg-blue-50/50" 
+                           : "border-gray-300 text-gray-400"
+                       )}>
+                         {isPast && !isRest ? "Recovery Day" : "Pending Log"}
                        </span>
                     </div>
                   )}

@@ -76,8 +76,8 @@ export default function FamilySync() {
 
       <div className="flex items-center justify-between px-2">
         <div>
-          <h2 className="text-3xl font-bold text-[#5A5A40]">Family Sync</h2>
-          <p className="text-gray-500 italic text-lg">Real-time training updates from the family.</p>
+          <h2 className="text-3xl font-bold text-[#5A5A40]">Leaderboard</h2>
+          <p className="text-gray-500 italic text-lg">This is a lightweight cohort scorecard: consistency, not competition.</p>
         </div>
         <div className="w-14 h-14 bg-[#5A5A40]/5 rounded-full flex items-center justify-center text-[#5A5A40]">
           <Users size={28} />
@@ -118,8 +118,8 @@ export default function FamilySync() {
                       <Calendar size={14} /> {log.date}
                     </div>
                   </div>
-                  <div className="bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-green-100">
-                    Completed Walk
+                  <div className="bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-green-100 flex items-center gap-2">
+                    🎖️ I showed up!
                   </div>
                 </div>
 
