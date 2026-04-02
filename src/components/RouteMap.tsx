@@ -100,6 +100,21 @@ export default function RouteMap({
       mapRef.current.map = map;
       mapRef.current.polyline = polyline;
       mapRef.current.isInitialized = true;
+
+      // Add Weather Layer if API key is present
+      const weatherApiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
+      if (weatherApiKey) {
+        const weatherLayer = new google.maps.ImageMapType({
+          getTileUrl: function(coord, zoom) {
+            return `https://tile.openweathermap.org/map/precipitation_new/${zoom}/${coord.x}/${coord.y}.png?appid=${weatherApiKey}`;
+          },
+          tileSize: new google.maps.Size(256, 256),
+          maxZoom: 18,
+          name: "Precipitation",
+          opacity: 0.6
+        });
+        map.overlayMapTypes.insertAt(0, weatherLayer);
+      }
     } catch (err) {
       setError('Failed to initialize map');
       console.error(err);

@@ -277,16 +277,23 @@ export default function WeatherPanel({ currentPosition }: WeatherPanelProps) {
 
             {/* Hiking Tips */}
             <div className="mt-6 p-4 bg-blue-50 rounded-[16px] border border-blue-200">
-              <p className="text-xs font-bold text-blue-900 mb-1 uppercase tracking-widest">
-                Hiking Tip
+              <p className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-widest flex items-center gap-2">
+                <AlertCircle size={14} /> Recommendation
               </p>
-              <p className="text-sm text-blue-800">
-                {weather.temp < 50
-                  ? 'Consider bringing an extra layer. It is cooler than typical.'
-                  : weather.temp > 75
-                    ? 'Stay hydrated. Bring extra water for this warm walk.'
-                    : 'Perfect walking weather. Great conditions for the Camino!'}
-              </p>
+              <div className="text-sm text-blue-800 font-medium space-y-1">
+                {(weather.condition.toLowerCase().includes('rain') || weather.condition.toLowerCase().includes('drizzle') || weather.condition.toLowerCase().includes('storm')) && (
+                  <p>🌧️ It looks like rain. Make sure to **carry an umbrella** or a poncho!</p>
+                )}
+                {weather.temp < 60 && (
+                  <p>🧥 It's chilly out today! You should **wear a jacket**.</p>
+                )}
+                {weather.temp > 75 && (
+                  <p>💧 It's quite warm. Make sure to bring extra water to stay hydrated.</p>
+                )}
+                {weather.temp >= 60 && weather.temp <= 75 && !weather.condition.toLowerCase().includes('rain') && !weather.condition.toLowerCase().includes('drizzle') && (
+                  <p>✨ Perfect walking weather! Enjoy your Camino training.</p>
+                )}
+              </div>
             </div>
           </motion.div>
         ) : null}

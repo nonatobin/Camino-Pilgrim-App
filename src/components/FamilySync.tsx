@@ -11,15 +11,29 @@ export default function FamilySync() {
   const [isBetaMode, setIsBetaMode] = useState(false);
 
   useEffect(() => {
-    const localLogs = getLogs().slice(-20).reverse() as TrainingLog[];
-    setLogs(localLogs);
-    
-    const profile = getProfile();
-    if (profile?.betaMode) {
-      setIsBetaMode(true);
-    }
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch('/api/notion/leaderboard');
+        if (response.ok) {
+          const data = await response.json();
+          setLogs(data.leaderboard);
+        } else {
+          // Fallback to local logs if API fails (e.g. no keys set yet)
+          setLogs(getLogs().slice(-20).reverse() as any[]);
+        }
+      } catch (e) {
+        console.error('Failed to fetch leaderboard:', e);
+        setLogs(getLogs().slice(-20).reverse() as any[]);
+      } finally {
+        const profile = getProfile();
+        if (profile?.betaMode) {
+          setIsBetaMode(true);
+        }
+        setLoading(false);
+      }
+    };
 
-    setLoading(false);
+    fetchLeaderboard();
   }, []);
 
   const toggleBeta = () => {
@@ -100,8 +114,10 @@ export default function FamilySync() {
               className="bg-white rounded-[32px] p-6 shadow-sm border border-[#5A5A40]/5 flex flex-col sm:flex-row gap-6 items-start sm:items-center"
             >
               {/* User Avatar */}
-              <div className="w-16 h-16 bg-[#f5f5f0] rounded-2xl flex items-center justify-center text-[#5A5A40] shrink-0 overflow-hidden">
-                {log.userPhoto ? (
+              <div className="w-16 h-16 bg-[#f5f5f0] rounded-2xl flex items-center justify-center text-[#5A5A40] shrink-0 overflow-hidden text-3xl">
+                {(log as any).avatar ? (
+                  (log as any).avatar
+                ) : log.userPhoto ? (
                   <img src={log.userPhoto} alt={log.userName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <Activity size={32} />
@@ -112,7 +128,7 @@ export default function FamilySync() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h4 className="text-xl font-bold text-[#1a1a1a]">
-                      {log.userName || 'Pilgrim'}
+                      {(log as any).name || log.userName || 'Pilgrim'}
                     </h4>
                     <div className="flex items-center gap-2 text-gray-400 text-sm font-medium uppercase tracking-widest mt-1">
                       <Calendar size={14} /> {log.date}

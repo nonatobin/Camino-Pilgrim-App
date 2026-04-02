@@ -4,9 +4,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
 import cookieSession from "cookie-session";
+import * as dotenv from "dotenv";
+import { Client as NotionClient } from "@notionhq/client";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize Notion Client (only if key exists)
+const notion = process.env.NOTION_API_KEY ? new NotionClient({ auth: process.env.NOTION_API_KEY }) : null;
+const NOTION_DB_ID = process.env.NOTION_LEADERBOARD_DB_ID;
 
 async function startServer() {
   const app = express();
@@ -109,6 +117,172 @@ async function startServer() {
       console.error("Calendar sync error:", error);
       const message = error?.response?.data?.error?.message || "Sync failed";
       res.status(500).json({ error: message });
+    }
+  });
+
+  // Fetch Leaderboard from Notion
+  app.get("/api/notion/leaderboard", async (req, res) => {
+    if (!notion || !NOTION_DB_ID) {
+      return res.status(500).json({ error: "Notion integration is not configured." });
+    }
+
+    try {
+      const response = await (notion.databases as any).query({
+        database_id: NOTION_DB_ID,
+        sorts: [
+          {
+            property: "Distance",
+            direction: "descending",
+          },
+        ],
+      });
+
+      const leaderboard = response.results.map((page: any) => {
+        const props = page.properties;
+        return {
+          id: page.id,
+          name: props.Name?.title?.[0]?.plain_text || "Unknown Pilgrim",
+          distance: props.Distance?.number || 0,
+          speed: props.Speed?.number || 0,
+          duration: props.Duration?.number || 0,
+          date: props.Date?.date?.start || "",
+          type: props.Type?.select?.name || "manual",
+          avatar: props.Avatar?.rich_text?.[0]?.plain_text || "👤",
+        };
+      });
+
+      res.json({ leaderboard });
+    } catch (error: any) {
+      console.error("Notion API Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch leaderboard from Notion" });
+    }
+  });
+
+  // Log a new walk to Notion
+  app.post("/api/notion/log-walk", async (req, res) => {
+    if (!notion || !NOTION_DB_ID) {
+      return res.status(500).json({ error: "Notion integration is not configured." });
+    }
+
+    const { userName, distance, speed, duration, type, date, avatar } = req.body;
+
+    try {
+      await notion.pages.create({
+        parent: { database_id: NOTION_DB_ID },
+        properties: {
+          Name: {
+            title: [
+              {
+                text: { content: userName || "Pilgrim" },
+              },
+            ],
+          },
+          Distance: {
+            number: distance || 0,
+          },
+          Speed: {
+            number: speed || 0,
+          },
+          Duration: {
+            number: duration || 0,
+          },
+          Date: {
+            date: { start: date || new Date().toISOString().split("T")[0] },
+          },
+          Type: {
+            select: { name: type || "manual" },
+          },
+          Avatar: {
+            rich_text: [
+              {
+                text: { content: avatar || "👤" },
+              },
+            ],
+          },
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Notion API Error:", error.message);
+      res.status(500).json({ error: "Failed to log walk to Notion" });
+    }
+  });
+
+  // Log a Bug to Notion
+  app.post("/api/notion/bug", async (req, res) => {
+    if (!notion || !process.env.NOTION_BUG_DB_ID) {
+      return res.status(500).json({ error: "Bug DB integration is not configured." });
+    }
+
+    const { title, description, severity, reporter, environment } = req.body;
+
+    try {
+      await notion.pages.create({
+        parent: { database_id: process.env.NOTION_BUG_DB_ID },
+        properties: {
+          Title: {
+            title: [{ text: { content: title || "New Bug" } }],
+          },
+          Status: {
+            status: { name: "New" },
+          },
+          Severity: {
+            select: { name: severity || "Minor" },
+          },
+          Description: {
+            rich_text: [{ text: { content: description || "" } }],
+          },
+          Environment: {
+            select: { name: environment || "Web" },
+          },
+          Reporter: {
+            rich_text: [{ text: { content: reporter || "Unknown" } }],
+          },
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Notion API Error (Bug):", error.message);
+      res.status(500).json({ error: "Failed to log bug to Notion" });
+    }
+  });
+
+  // Log a Feature to Notion
+  app.post("/api/notion/feature", async (req, res) => {
+    if (!notion || !process.env.NOTION_FEATURE_DB_ID) {
+      return res.status(500).json({ error: "Feature DB integration is not configured." });
+    }
+
+    const { title, description, priority, reporter } = req.body;
+
+    try {
+      await notion.pages.create({
+        parent: { database_id: process.env.NOTION_FEATURE_DB_ID },
+        properties: {
+          Title: {
+            title: [{ text: { content: title || "New Feature" } }],
+          },
+          Status: {
+            status: { name: "New" },
+          },
+          Priority: {
+            select: { name: priority || "P2" },
+          },
+          Description: {
+            rich_text: [{ text: { content: description || "" } }],
+          },
+          Reporter: {
+            rich_text: [{ text: { content: reporter || "Unknown" } }],
+          },
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Notion API Error (Feature):", error.message);
+      res.status(500).json({ error: "Failed to log feature to Notion" });
     }
   });
 

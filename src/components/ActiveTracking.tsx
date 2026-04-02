@@ -147,13 +147,26 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
 
     const pace = distance > 0 ? (distance / (elapsedTime / 3600)) : 0;
     try {
-      addLog({
+      const walkData = {
         userName: user.displayName || 'Pilgrim',
         date: new Date().toISOString().split('T')[0],
         distance: parseFloat(distance.toFixed(2)),
         speed: parseFloat(pace.toFixed(2)),
         duration: elapsedTime,
-        type: 'automated'
+        type: 'automated',
+        avatar: user.avatar || '👤'
+      };
+
+      // Save locally as backup
+      addLog(walkData);
+
+      // Save to Notion Backend
+      await fetch('/api/notion/log-walk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(walkData)
       });
 
       setSuccess(true);
