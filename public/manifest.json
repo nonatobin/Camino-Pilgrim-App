@@ -1,0 +1,21 @@
+{
+  "short_name": "Camino",
+  "name": "Camino Pilgrim App",
+  "description": "Training and Walk Tracker for Camino de Santiago",
+  "icons": [
+    {
+      "src": "/qrcode.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/qrcode.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#5A5A40",
+  "background_color": "#ffffff"
+}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function InstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
+  const [isIOSNonSafari, setIsIOSNonSafari] = useState(false);
   const [isStandalone, setIsStandalone] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -21,7 +22,11 @@ export default function InstallPrompt() {
     // 2. Device Detection
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isChromeIOS = userAgent.includes('crios');
+    const isFirefoxIOS = userAgent.includes('fxios');
+    
     setIsIOS(isIOSDevice);
+    setIsIOSNonSafari(isIOSDevice && (isChromeIOS || isFirefoxIOS));
 
     if (isIOSDevice) {
       // For iOS, there is no event to hook into. We must just show the UI guide.
@@ -61,18 +66,31 @@ export default function InstallPrompt() {
         <Share size={32} />
       </div>
       <h3 className="text-2xl font-bold text-[#1a1a1a]">Install App to iPhone</h3>
-      <p className="text-xl text-gray-600 leading-relaxed font-medium">
-        To use the Camino App full-screen, tap the <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Share</strong> icon at the bottom of your browser, then scroll down and tap <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Add to Home Screen</strong>.
-      </p>
       
-      {/* Down arrow pointing towards Safari's bottom bar */}
-      <motion.div 
-        animate={{ y: [0, 10, 0] }} 
-        transition={{ repeat: Infinity, duration: 2 }}
-        className="mt-8 text-[#5A5A40]"
-      >
-        <span className="text-4xl">⬇️</span>
-      </motion.div>
+      {isIOSNonSafari ? (
+        <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+          <p className="text-lg text-red-800 leading-relaxed font-bold mb-2">
+            ⚠️ You are using Chrome/Firefox on an iPhone.
+          </p>
+          <p className="text-md text-red-700 font-medium">
+            Apple requires you to open this link in the <strong>Safari browser</strong> to install apps to your Home Screen. Please tap the compass icon or copy the URL and open it in Safari!
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xl text-gray-600 leading-relaxed font-medium">
+            To use the Camino App full-screen, tap the <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Share</strong> icon at the bottom of your browser, then scroll down and tap <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Add to Home Screen</strong>.
+          </p>
+          
+          <motion.div 
+            animate={{ y: [0, 10, 0] }} 
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="mt-8 text-[#5A5A40]"
+          >
+            <span className="text-4xl">⬇️</span>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 
