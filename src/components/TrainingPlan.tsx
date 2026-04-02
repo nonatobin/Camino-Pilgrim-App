@@ -124,13 +124,9 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
       }
     });
     icsContent += "END:VCALENDAR";
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'camino_training.ics';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Using a data URI format forces iOS Safari to intercept it natively and pop up the native Calendar 'Add All Events' sheet instead of downloading via the confusing Files app.
+    const encodedUri = encodeURI(`data:text/calendar;charset=utf8,${icsContent}`);
+    window.location.href = encodedUri;
   };
 
   // Smart Reminders Logic
