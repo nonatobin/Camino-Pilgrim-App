@@ -10,6 +10,7 @@ import TranslatePanel from './components/TranslatePanel';
 import PomodoroTimer from './components/PomodoroTimer';
 import Onboarding from './components/Onboarding';
 import FixerAgentModal from './components/FixerAgentModal';
+import InstallPrompt from './components/InstallPrompt';
 import { featureFlags } from './config/environment';
 import { Mic, Headset } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -30,6 +31,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ChromeRedirect>
+        <InstallPrompt />
         {/* Show onboarding if no profile */}
         {(!profile || !profile.onboardingCompleted) ? (
           <Onboarding user={user} onComplete={handleOnboardingComplete} />
