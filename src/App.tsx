@@ -36,7 +36,7 @@ export default function App() {
         {(!profile || !profile.onboardingCompleted) ? (
           <Onboarding user={user} onComplete={handleOnboardingComplete} />
         ) : (
-          <Layout user={user} profile={profile} activeTab={activeTab} setActiveTab={setActiveTab}>
+          <Layout user={user} profile={profile} activeTab={activeTab} setActiveTab={setActiveTab} onCallFixer={() => setShowFixerAgent(true)}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -52,14 +52,6 @@ export default function App() {
                 {activeTab === 'translate' && featureFlags.translateEnabled && <TranslatePanel />}
               </motion.div>
             </AnimatePresence>
-
-            {/* Fixer Agent Call Button */}
-            <button 
-              onClick={() => setShowFixerAgent(true)} 
-              className="fixed bottom-32 left-8 w-16 h-16 bg-[#1a1a1a] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-[#f5f5f0]"
-            >
-              <Headset size={28} />
-            </button>
 
             {featureFlags.voiceAssistantEnabled && (
               <button onClick={() => setShowAssistant(true)} className="fixed bottom-32 right-8 w-16 h-16 bg-[#5A5A40] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white">

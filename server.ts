@@ -6,8 +6,16 @@ import { google } from "googleapis";
 import cookieSession from "cookie-session";
 import * as dotenv from "dotenv";
 import { Client as NotionClient } from "@notionhq/client";
+import fs from "fs";
 
-dotenv.config();
+// Load environment variables from standard or OSX-renamed files. 
+// Files loaded earlier have priority, as dotenv doesn't overwrite existing variables.
+const envFiles = [".env.local", ".env", ".env.txt"];
+for (const file of envFiles) {
+  if (fs.existsSync(file)) {
+    dotenv.config({ path: file });
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -211,7 +219,7 @@ async function startServer() {
 
   // Log a Bug to Notion
   app.post("/api/notion/bug", async (req, res) => {
-    if (!notion || !process.env.NOTION_BUG_DB_ID) {
+    if (!notion || !process.env.NOTION_BUG_REPORTS_DB_ID) {
       return res.status(500).json({ error: "Bug DB integration is not configured." });
     }
 
@@ -219,7 +227,7 @@ async function startServer() {
 
     try {
       await notion.pages.create({
-        parent: { database_id: process.env.NOTION_BUG_DB_ID },
+        parent: { database_id: process.env.NOTION_BUG_REPORTS_DB_ID },
         properties: {
           Title: {
             title: [{ text: { content: title || "New Bug" } }],
@@ -251,7 +259,7 @@ async function startServer() {
 
   // Log a Feature to Notion
   app.post("/api/notion/feature", async (req, res) => {
-    if (!notion || !process.env.NOTION_FEATURE_DB_ID) {
+    if (!notion || !process.env.NOTION_FEATURE_SUGGESTIONS_DB_ID) {
       return res.status(500).json({ error: "Feature DB integration is not configured." });
     }
 
@@ -259,7 +267,7 @@ async function startServer() {
 
     try {
       await notion.pages.create({
-        parent: { database_id: process.env.NOTION_FEATURE_DB_ID },
+        parent: { database_id: process.env.NOTION_FEATURE_SUGGESTIONS_DB_ID },
         properties: {
           Title: {
             title: [{ text: { content: title || "New Feature" } }],
