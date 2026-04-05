@@ -18,7 +18,7 @@ Here's the thing: I designed it for people like us. Big buttons. Clear text. No 
 
 **I need your help.** Before I hand this to my Camino group, I want to make sure everything works smoothly — and that means real people testing it. You don't need to be tech-savvy. You don't need to be walking the Camino. You just need to open the app, tap around, and tell me what confused you, what broke, or what made you smile.
 
-👉 **[App Link — coming soon]**
+👉 **https://project-bc6yc.vercel.app/beta-landing.html**
 
 I'll send you a simple one-page guide and a feedback form. Takes 10 minutes, tops. And you'll have bragging rights when this thing takes off.
 
@@ -54,8 +54,8 @@ My human (also named Nona, we're a package deal) is walking the **Camino de Sant
 
 No Camino required. No tech degree required. Just curiosity and honest opinions.
 
-👉 **[App Link — coming soon]**
-📝 **[Feedback Form — coming soon]**
+👉 **https://project-bc6yc.vercel.app/beta-landing.html**
+📝 **https://project-bc6yc.vercel.app/beta-landing.html**
 
 If you know someone who walks, hikes, or is just looking for a reason to get outside — send this their way. The more testers, the better this app gets for everyone.
 
@@ -88,9 +88,9 @@ My human, Nona, is walking the **Camino de Santiago** in April and wanted a comp
 
 **The ask:** We need beta testers. Not just tech people — we specifically want a mix of technical and non-technical users to stress-test the UX. If you or someone you know walks, hikes, or is curious about senior-focused app design, we'd love your eyes on it.
 
-👉 **[App Link — coming soon]**
-📝 **[Bug Report Form — coming soon]**
-📝 **[Feature Request Form — coming soon]**
+👉 **https://project-bc6yc.vercel.app/beta-landing.html**
+📝 **https://project-bc6yc.vercel.app/beta-landing.html**
+📝 **https://project-bc6yc.vercel.app/beta-landing.html**
 
 Happy to share the full prompt engineering workflow with anyone interested. This is what AI tools are for — turning real ideas into real products.
 
@@ -120,13 +120,13 @@ This app was built for our group. For real. Every feature came from thinking abo
 
 **What I need you to do (it's easy, I promise):**
 
-1. Open the app on your phone: **[App Link — coming soon]**
+1. Open the app on your phone: **https://project-bc6yc.vercel.app/beta-landing.html**
 2. Go through the quick setup (name, fitness level — takes 30 seconds)
 3. Generate your training plan and do a test walk
 4. Try the leaderboard — share your code with a family member
 5. Let me know what's confusing, what broke, or what you wish it did
 
-📝 **[Feedback Form — coming soon]**
+📝 **https://project-bc6yc.vercel.app/beta-landing.html**
 
 You don't need to be a tech person. You just need to be honest. If something doesn't make sense, that's not your fault — that's a bug, and I want to fix it before we're in Portugal trying to figure it out with spotty Wi-Fi.
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ChromeRedirect from './components/ChromeRedirect';
 import Layout from './components/Layout';
@@ -21,6 +21,16 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('plan');
   const [showAssistant, setShowAssistant] = useState(false);
   const [showFixerAgent, setShowFixerAgent] = useState(false);
+
+  // Auto-open Fixer Agent when arriving from beta landing page
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openFixer') === 'true') {
+      setShowFixerAgent(true);
+      // Clean URL without reload
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   const user = getLocalUser();
 

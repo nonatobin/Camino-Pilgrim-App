@@ -35,11 +35,12 @@ function getChromeUrl(): string {
 export default function ChromeRedirect({ children }: { children: React.ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
 
-  // If already dismissed, or not Safari, just render children
+  // If already dismissed, render children normally
   if (dismissed) return <>{children}</>;
 
-  // Safari — softer banner for both iOS and Desktop
-  if (isIOSSafari() || isDesktopSafari()) {
+  // On iOS Safari: do NOT show any banner. Safari is REQUIRED for PWA install.
+  // Only show Chrome recommendation on Desktop Safari where voice APIs are limited.
+  if (isDesktopSafari()) {
     return (
       <>
         <div className="fixed top-0 inset-x-0 z-[100] bg-[#5A5A40] text-white px-4 py-3 text-center text-sm flex items-center justify-center gap-3">
@@ -58,6 +59,6 @@ export default function ChromeRedirect({ children }: { children: React.ReactNode
     );
   }
 
-  // Not Safari — render normally
+  // iOS Safari or any non-Safari browser — render normally
   return <>{children}</>;
 }

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Camino Pilgrim — Beta Tester Welcome</title>
+  <meta name="description" content="Welcome to the Camino Pilgrim App beta test. Install the app and report bugs with the Fixer Agent." />
+
+  <!-- PWA meta -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#5A5A40" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Camino" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100dvh;
+      background: linear-gradient(160deg, #3A3A20 0%, #4A4A30 20%, #5A5A40 50%, #6B6B50 80%, #7A7A60 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .glow-1 {
+      position: fixed;
+      top: -25%;
+      right: -15%;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: rgba(255, 200, 50, 0.08);
+      filter: blur(120px);
+      pointer-events: none;
+    }
+    .glow-2 {
+      position: fixed;
+      bottom: -20%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: rgba(200, 150, 30, 0.06);
+      filter: blur(100px);
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 32px;
+      padding: 48px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .shell-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      margin: 0 auto 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    .beta-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #FFD700, #DAA520);
+      color: #1a1a1a;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, #e8e0d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+      margin-bottom: 32px;
+      font-weight: 500;
+    }
+
+    .bug-note {
+      background: rgba(255,80,80,0.1);
+      border: 1px solid rgba(255,80,80,0.2);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 15px;
+      color: #ffcccc;
+      line-height: 1.5;
+    }
+    .bug-note strong {
+      color: #ff9999;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px 24px;
+      border: none;
+      border-radius: 18px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      margin-bottom: 12px;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-fixer {
+      background: #fff;
+      color: #1a1a1a;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .btn-fixer:hover { background: #f0f0f0; }
+    .btn-fixer .mic-icon {
+      width: 28px;
+      height: 28px;
+      background: #e53e3e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-install {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-install:hover { background: rgba(255,255,255,0.18); }
+
+    .btn-open-app {
+      background: linear-gradient(135deg, #5A5A40 0%, #4A4A30 100%);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    .btn-open-app:hover { filter: brightness(1.1); }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 24px 0;
+    }
+
+    .footer-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 20px;
+    }
+
+    .ios-steps {
+      text-align: left;
+      background: rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 15px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+    }
+    .ios-steps strong { color: #fff; }
+    .ios-steps .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-right: 8px;
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); }
+    }
+    .mic-pulse { animation: pulse-glow 2s infinite; }
+  </style>
+</head>
+<body>
+  <div class="glow-1"></div>
+  <div class="glow-2"></div>
+
+  <div class="card">
+    <div class="shell-icon">🐚</div>
+    <span class="beta-badge">✦ Beta Tester</span>
+
+    <h1>Thanks for being a beta tester on my Camino Pilgrim App</h1>
+
+    <p class="subtitle">
+      Your feedback helps make this app better for every pilgrim walking the Camino de Santiago.
+    </p>
+
+    <div class="bug-note">
+      🛡️ <strong>Be sure to call Fixer Agent to report any bugs.</strong>
+      It's our AI-powered bug reporter — just talk to it!
+    </div>
+
+    <!-- Call Fixer Agent Button -->
+    <a href="/" id="btn-fixer" class="btn btn-fixer" onclick="openAppWithFixer(event)">
+      <span class="mic-icon mic-pulse">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      </span>
+      Call Fixer Agent
+    </a>
+
+    <!-- Open App Button -->
+    <a href="/" class="btn btn-open-app">
+      🥾 Open Camino App
+    </a>
+
+    <div class="divider"></div>
+
+    <!-- Install section — adapts per platform -->
+    <div id="install-android" class="hidden">
+      <button id="btn-android-install" class="btn btn-install" onclick="installPWA()">
+        📲 Install App to Home Screen
+      </button>
+    </div>
+
+    <div id="install-ios-safari" class="hidden">
+      <div class="ios-steps">
+        <div><span class="step-number">1</span> Tap the <strong>Share</strong> icon ⬆️ at the bottom</div>
+        <div><span class="step-number">2</span> Scroll down and tap <strong>Add to Home Screen</strong></div>
+        <div><span class="step-number">3</span> Tap <strong>Add</strong> — done! 🎉</div>
+      </div>
+    </div>
+
+    <div id="install-ios-chrome" class="hidden">
+      <div class="ios-steps" style="background: rgba(255,80,80,0.1); border: 1px solid rgba(255,80,80,0.15);">
+        <div style="color: #ffaaaa; font-weight: 700; margin-bottom: 8px;">
+          ⚠️ You're using Chrome on iPhone
+        </div>
+        <div>Apple requires <strong>Safari</strong> to install apps to your Home Screen.</div>
+        <div style="margin-top: 8px;">
+          <span class="step-number">1</span> Copy this page's URL
+        </div>
+        <div>
+          <span class="step-number">2</span> Open <strong>Safari</strong> and paste the URL
+        </div>
+        <div>
+          <span class="step-number">3</span> Then follow the Share → Add to Home Screen steps
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-text">Train · Track · Thrive</p>
+  </div>
+
+  <script>
+    // --- Platform detection ---
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isChromeIOS = ua.includes('crios');
+    const isSafariIOS = isIOS && /safari/.test(ua) && !isChromeIOS && !ua.includes('fxios');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+    // Show the right install section
+    if (!isStandalone) {
+      if (isIOS && isSafariIOS) {
+        document.getElementById('install-ios-safari').classList.remove('hidden');
+      } else if (isIOS && isChromeIOS) {
+        document.getElementById('install-ios-chrome').classList.remove('hidden');
+      } else {
+        // Android / Desktop Chrome
+        document.getElementById('install-android').classList.remove('hidden');
+      }
+    }
+
+    // --- Android PWA Install ---
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // Show install button
+      document.getElementById('install-android').classList.remove('hidden');
+    });
+
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((result) => {
+          if (result.outcome === 'accepted') {
+            document.getElementById('install-android').classList.add('hidden');
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        // Fallback: navigate to app (which will show its own install prompt)
+        window.location.href = '/';
+      }
+    }
+
+    // --- Open app with Fixer Agent auto-trigger ---
+    function openAppWithFixer(e) {
+      e.preventDefault();
+      // Navigate to main app with a query param to auto-open Fixer Agent
+      window.location.href = '/?openFixer=true';
+    }
+
+    // Register service worker from this page too
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
