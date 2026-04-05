@@ -10,9 +10,8 @@ interface FixerLiveAgentProps {
 }
 
 const GEMINI_WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
-// We use flash-live interface
-// No audio capture tools for standard flash, only 3.1-flash-live or similar
-const MODEL = 'models/gemini-2.0-flash-exp';
+// Use stable gemini-2.5-flash for Live API with function calling support
+const MODEL = 'models/gemini-2.5-flash';
 
 // We must use functionDeclarations inside a tools array for the initial setup.
 const fixerTools = [
@@ -307,11 +306,21 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
         // Setup payload mapping our agent architecture
         const setupPayload = {
           setup: {
-            model: "models/gemini-2.0-flash-exp",
+            model: MODEL,
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },
+                },
+              },
+            },
             systemInstruction: {
               parts: [{ text: `You are the Fixer Agent for the Camino Pilgrim test architecture. You sit explicitly on top of a web application and have vision representing the DOM screenshot. Help the user interactively by talking to them, but also utilize your TOOLS to invoke React state alterations natively.` }]
             },
-            tools: fixerTools
+            tools: fixerTools,
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
           }
         };
         ws.send(JSON.stringify(setupPayload));

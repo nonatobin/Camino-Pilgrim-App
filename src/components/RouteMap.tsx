@@ -175,9 +175,15 @@ export default function RouteMap({
   if (error) {
     return (
       <div className="bg-white rounded-[32px] p-8 shadow-lg border border-[#5A5A40]/5 h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-[#5A5A40] font-serif font-bold text-lg mb-2">Map Unavailable</p>
-          <p className="text-gray-500 text-sm">{error}</p>
+        <div className="text-center max-w-xs">
+          <p className="text-4xl mb-4">🗺️</p>
+          <p className="text-[#5A5A40] font-serif font-bold text-lg mb-2">Map Loading</p>
+          <p className="text-gray-500 text-sm mb-4">{error}</p>
+          {error.includes('API key') && (
+            <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl">
+              The Google Maps API key needs <strong>billing enabled</strong> in Google Cloud Console and the <strong>Maps JavaScript API</strong> turned on.
+            </p>
+          )}
         </div>
       </div>
     );

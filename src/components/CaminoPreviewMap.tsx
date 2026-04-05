@@ -27,12 +27,26 @@ const MOCK_MARKERS = [
 export default function CaminoPreviewMap() {
   const mapRef = React.useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
   const [activeWeatherNode, setActiveWeatherNode] = useState<{city: string, text: string} | null>(null);
 
   useEffect(() => {
-    // Rely on RouteMap's injection or if doing alone, ensure maps logic
-    if (!window.google) return;
-    setMapReady(true);
+    // Check if Google Maps loaded (from RouteMap or own script)
+    const checkGoogle = () => {
+      if (window.google) {
+        setMapReady(true);
+      } else {
+        // Wait up to 5 seconds for Maps to load
+        setTimeout(() => {
+          if (window.google) {
+            setMapReady(true);
+          } else {
+            setMapError(true);
+          }
+        }, 5000);
+      }
+    };
+    checkGoogle();
   }, []);
 
   useEffect(() => {
@@ -75,7 +89,7 @@ export default function CaminoPreviewMap() {
   }, [mapReady]);
 
   return (
-    <div className="relative w-full h-[600px] bg-[#f5f5f0] rounded-[32px] overflow-hidden shadow-xl border border-[#5A5A40]/10">
+    <div className="relative w-full bg-[#f5f5f0] rounded-[32px] overflow-hidden shadow-xl border border-[#5A5A40]/10">
       <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur px-6 py-4 rounded-3xl shadow-lg border border-white/20 max-w-sm">
         <h3 className="font-serif font-bold text-[#5A5A40] flex items-center gap-2 mb-2">
           <MapIcon size={20} />
@@ -89,7 +103,28 @@ export default function CaminoPreviewMap() {
         </div>
       </div>
 
-      <div ref={mapRef} className="w-full h-full" />
+      {mapError ? (
+        <div className="p-8 pt-28 pb-8 space-y-4">
+          <div className="bg-white rounded-2xl p-5 border border-[#5A5A40]/10">
+            <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg mb-4 font-medium">
+              🗺️ Interactive map requires Google Maps API with billing enabled. Here's your route overview:
+            </p>
+            {MOCK_MARKERS.map((mark) => (
+              <div key={mark.id} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+                <span className="text-2xl flex-shrink-0">
+                  {mark.type === 'hotel' ? '🛏️' : mark.type === 'food' ? '🍽️' : '⛪'}
+                </span>
+                <div>
+                  <p className="font-bold text-[#5A5A40] text-sm">{mark.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{mark.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div ref={mapRef} className="w-full h-[600px]" />
+      )}
 
       {activeWeatherNode && (
         <motion.div 

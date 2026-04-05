@@ -58,38 +58,19 @@ export default function DashboardWeather({ startLocation }: DashboardWeatherProp
   const [usingDemo, setUsingDemo] = useState(false);
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      const apiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
+    const apiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
 
-      if (!apiKey) {
-        setUsingDemo(true);
-        setWeather(DEMO_WEATHER);
-        setLoading(false);
-        return;
-      }
+    if (!apiKey) {
+      setUsingDemo(true);
+      setWeather(DEMO_WEATHER);
+      setLoading(false);
+      return;
+    }
 
-      // Resolve coordinates from start location
-      const locLower = (startLocation || '').toLowerCase().trim();
-      let coords = CAMINO_LOCATIONS[locLower];
-
-      if (!coords) {
-        // Try partial match
-        for (const [key, val] of Object.entries(CAMINO_LOCATIONS)) {
-          if (locLower.includes(key) || key.includes(locLower)) {
-            coords = val;
-            break;
-          }
-        }
-      }
-
-      // Default to Santiago if no match
-      if (!coords) {
-        coords = CAMINO_LOCATIONS['santiago'];
-      }
-
+    const fetchWeatherForCoords = async (lat: number, lng: number) => {
       try {
         const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${coords.lat}&lon=${coords.lng}&units=imperial&appid=${apiKey}`
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=imperial&appid=${apiKey}`
         );
 
         if (!response.ok) throw new Error('Weather API error');
@@ -103,7 +84,7 @@ export default function DashboardWeather({ startLocation }: DashboardWeatherProp
           humidity: data.main.humidity,
           windSpeed: Math.round(data.wind.speed),
           icon: data.weather[0].icon,
-          city: data.name || startLocation || 'Trail',
+          city: data.name || startLocation || 'Your Location',
         });
       } catch (err) {
         setUsingDemo(true);
@@ -113,7 +94,35 @@ export default function DashboardWeather({ startLocation }: DashboardWeatherProp
       }
     };
 
-    fetchWeather();
+    // Try real GPS location first, then fall back to Camino location lookup
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchWeatherForCoords(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          // Geolocation denied — fall back to Camino location lookup
+          const locLower = (startLocation || '').toLowerCase().trim();
+          let coords = CAMINO_LOCATIONS[locLower];
+          if (!coords) {
+            for (const [key, val] of Object.entries(CAMINO_LOCATIONS)) {
+              if (locLower.includes(key) || key.includes(locLower)) {
+                coords = val;
+                break;
+              }
+            }
+          }
+          if (!coords) coords = CAMINO_LOCATIONS['santiago'];
+          fetchWeatherForCoords(coords.lat, coords.lng);
+        },
+        { timeout: 5000, maximumAge: 300000 }
+      );
+    } else {
+      // No geolocation available — use Camino locations
+      const locLower = (startLocation || '').toLowerCase().trim();
+      let coords = CAMINO_LOCATIONS[locLower] || CAMINO_LOCATIONS['santiago'];
+      fetchWeatherForCoords(coords.lat, coords.lng);
+    }
   }, [startLocation]);
 
   if (loading) {

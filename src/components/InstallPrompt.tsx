@@ -60,36 +60,111 @@ export default function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
+  const [iosStep, setIosStep] = useState(0);
+
+  const iosStepData = [
+    {
+      number: 1,
+      icon: '⬆️',
+      title: 'Find the Share button',
+      description: 'Look at the very bottom of your Safari screen. Tap the square icon with an arrow pointing up.',
+      highlight: 'It\'s the box with an upward arrow ⬆️',
+    },
+    {
+      number: 2,
+      icon: '➕',
+      title: 'Add to Home Screen',
+      description: 'A menu will appear. Scroll down in that menu until you see "Add to Home Screen" with a ➕ icon. Tap it.',
+      highlight: 'You may need to scroll down to find it',
+    },
+    {
+      number: 3,
+      icon: '✅',
+      title: 'Tap "Add"',
+      description: 'You\'ll see the app name "Camino". Tap the blue "Add" button in the top right corner. Done! The app icon will appear on your home screen.',
+      highlight: 'Look for the blue "Add" in the top right',
+    },
+  ];
+
   const iOSInstructions = (
-    <div className="flex flex-col items-center text-center space-y-6">
-      <div className="w-16 h-16 bg-[#5A5A40]/10 rounded-2xl flex items-center justify-center text-[#5A5A40]">
-        <Share size={32} />
+    <div className="flex flex-col items-center text-center space-y-5">
+      <div className="w-16 h-16 bg-[#5A5A40]/10 rounded-2xl flex items-center justify-center">
+        <Share size={32} className="text-[#5A5A40]" />
       </div>
       <h3 className="text-2xl font-bold text-[#1a1a1a]">Install App to iPhone</h3>
-      
+
       {isIOSNonSafari ? (
-        <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+        <div className="bg-red-50 p-5 rounded-xl border border-red-100">
           <p className="text-lg text-red-800 leading-relaxed font-bold mb-2">
-            ⚠️ You are using Chrome/Firefox on an iPhone.
+            ⚠️ You're using Chrome on iPhone
           </p>
-          <p className="text-md text-red-700 font-medium">
-            Apple requires you to open this link in the <strong>Safari browser</strong> to install apps to your Home Screen. Please tap the compass icon or copy the URL and open it in Safari!
+          <p className="text-md text-red-700 font-medium mb-4">
+            Apple requires <strong>Safari</strong> to install apps to your Home Screen.
           </p>
+          <div className="bg-white p-4 rounded-lg text-left space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-red-700 font-bold text-sm">1</span>
+              <p className="text-sm text-gray-700 pt-1">Copy this URL from the address bar</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-red-700 font-bold text-sm">2</span>
+              <p className="text-sm text-gray-700 pt-1">Open <strong>Safari</strong> (the blue compass icon)</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-red-700 font-bold text-sm">3</span>
+              <p className="text-sm text-gray-700 pt-1">Paste the URL and press Go</p>
+            </div>
+          </div>
         </div>
       ) : (
-        <>
-          <p className="text-xl text-gray-600 leading-relaxed font-medium">
-            To use the Camino App full-screen, tap the <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Share</strong> icon at the bottom of your browser, then scroll down and tap <strong className="text-[#1a1a1a] shadow-sm bg-gray-100 px-2 py-1 rounded">Add to Home Screen</strong>.
-          </p>
-          
-          <motion.div 
-            animate={{ y: [0, 10, 0] }} 
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="mt-8 text-[#5A5A40]"
+        <div className="w-full space-y-4">
+          {/* Step card */}
+          <motion.div
+            key={iosStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-[#f5f5f0] rounded-2xl p-6 text-left border border-[#5A5A40]/10"
           >
-            <span className="text-4xl">⬇️</span>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-[#5A5A40] text-white rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0">
+                {iosStepData[iosStep].number}
+              </div>
+              <span className="text-4xl">{iosStepData[iosStep].icon}</span>
+            </div>
+            <h4 className="text-xl font-bold text-[#1a1a1a] mb-2">{iosStepData[iosStep].title}</h4>
+            <p className="text-gray-600 text-lg leading-relaxed mb-3">{iosStepData[iosStep].description}</p>
+            <p className="text-[#5A5A40] font-bold text-sm bg-[#5A5A40]/10 px-3 py-2 rounded-lg inline-block">
+              💡 {iosStepData[iosStep].highlight}
+            </p>
           </motion.div>
-        </>
+
+          {/* Step dots + navigation */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              {iosStepData.map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-3 h-3 rounded-full transition-colors ${i === iosStep ? 'bg-[#5A5A40]' : 'bg-gray-200'}`}
+                />
+              ))}
+            </div>
+            {iosStep < iosStepData.length - 1 ? (
+              <button
+                onClick={() => setIosStep(iosStep + 1)}
+                className="bg-[#5A5A40] text-white px-6 py-3 rounded-full font-bold text-lg flex items-center gap-2 active:scale-95 transition-transform"
+              >
+                Next Step →
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowPrompt(false)}
+                className="bg-green-600 text-white px-6 py-3 rounded-full font-bold text-lg flex items-center gap-2 active:scale-95 transition-transform"
+              >
+                ✅ Got it!
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

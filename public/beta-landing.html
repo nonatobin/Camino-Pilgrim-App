@@ -275,6 +275,9 @@
       <button id="btn-android-install" class="btn btn-install" onclick="installPWA()">
         📲 Install App to Home Screen
       </button>
+      <p id="samsung-note" class="hidden" style="font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 12px; line-height: 1.5; text-align: left; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 12px;">
+        📱 <strong style="color: rgba(255,255,255,0.7);">Samsung users:</strong> You may see a message saying "this app was built for an older version of Android" — <strong style="color: rgba(255,255,255,0.7);">it's safe to dismiss!</strong> Just tap "Install anyway" or "OK". This is a standard Chrome message for web apps.
+      </p>
     </div>
 
     <div id="install-ios-safari" class="hidden">
@@ -323,6 +326,11 @@
       } else {
         // Android / Desktop Chrome
         document.getElementById('install-android').classList.remove('hidden');
+        // Show Samsung-specific note
+        if (ua.includes('samsung') || ua.includes('sm-')) {
+          const samsungNote = document.getElementById('samsung-note');
+          if (samsungNote) samsungNote.classList.remove('hidden');
+        }
       }
     }
 
