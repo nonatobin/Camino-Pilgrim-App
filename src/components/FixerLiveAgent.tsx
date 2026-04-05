@@ -89,12 +89,23 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
   const captureScreen = async () => {
     try {
       addLog('Capturing DOM visually...');
-      const canvas = await html2canvas(document.body, { useCORS: true, logging: false });
-      // strip prefix
+      const canvas = await html2canvas(document.body, { 
+        useCORS: true, 
+        logging: false,
+        ignoreElements: (el) => {
+          // Skip elements that might have unsupported CSS
+          return el.tagName === 'VIDEO' || el.tagName === 'IFRAME';
+        }
+      });
       const b64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
       base64Screenshot.current = b64;
+      addLog('DOM captured.');
     } catch (e) {
-      console.error('DOM capture error:', e);
+      // html2canvas can fail on modern CSS (oklab, oklch, etc.)
+      // Continue without screenshot — voice still works
+      console.warn('DOM capture skipped (CSS compatibility):', e);
+      base64Screenshot.current = null;
+      addLog('DOM capture skipped — connecting voice only.');
     }
   };
 
