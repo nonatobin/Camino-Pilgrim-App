@@ -72,7 +72,7 @@ export default function RouteMap({
   useEffect(() => {
     if (!mapReady || !containerRef.current || mapRef.current.isInitialized) return;
 
-    const defaultCenter = currentPosition || { lat: 42.8125, lng: -1.6458 }; // Camino default
+    const defaultCenter = currentPosition || { lat: 42.1181, lng: -8.8486 }; // Baiona (Camino Português start)
 
     try {
       const map = new google.maps.Map(containerRef.current, {

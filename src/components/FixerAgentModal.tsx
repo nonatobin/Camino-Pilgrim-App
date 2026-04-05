@@ -15,6 +15,7 @@ export default function FixerAgentModal({ onClose }: FixerAgentModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
 
@@ -67,12 +68,16 @@ export default function FixerAgentModal({ onClose }: FixerAgentModalProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // In a real app we'd upload to S3/Cloudinary.
-      // For this beta, we can convert to base64 or just indicate attachment. 
-      // Notion currently doesn't easily accept raw Base64 files in its standard API without hosting them somewhere first.
-      // As a workaround for Beta, we'll just note it, but let's try to convert to object URL to preview it.
       const url = URL.createObjectURL(file);
       setScreenshotUrl(url);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setScreenshotBase64(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -94,7 +99,8 @@ export default function FixerAgentModal({ onClose }: FixerAgentModalProps) {
       priority: type === 'feature' ? severity : undefined, // Mapping minor/major to priorities roughly
       reporter: user?.email || user?.displayName || 'Anonymous',
       environment,
-      hasScreenshot: !!screenshotUrl
+      hasScreenshot: !!screenshotBase64,
+      screenshotBase64: screenshotBase64 // Will be intercepted by backend proxy
     };
 
     try {

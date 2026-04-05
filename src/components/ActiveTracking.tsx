@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addLog } from '../lib/localStore';
+import { addLog, addFavoriteRoute } from '../lib/localStore';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, Square, MapPin, Activity, Clock, TrendingUp, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -7,6 +7,7 @@ import EmergencyOverlay from './EmergencyOverlay';
 import RouteMap from './RouteMap';
 import NearbyPlaces from './NearbyPlaces';
 import WeatherPanel from './WeatherPanel';
+import FavoriteRoutes from './FavoriteRoutes';
 
 interface ActiveTrackingProps {
   user: any;
@@ -30,8 +31,28 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
   const [success, setSuccess] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [fallDetected, setFallDetected] = useState(false);
+  const [weatherAlert, setWeatherAlert] = useState<string | null>(null);
+  const [showFavorites, setShowFavorites] = useState(false);
   const watchId = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Weather pre-check logic (mocked alert for beta depending on current tracked pos)
+  useEffect(() => {
+    if (currentPosition && !isTracking) {
+      const apiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
+      if (apiKey) {
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${currentPosition.lat}&lon=${currentPosition.lng}&units=imperial&appid=${apiKey}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.main && data.main.temp < 60) {
+              setWeatherAlert(`Alert: It's chilly (${Math.round(data.main.temp)}°F). Bring a jacket for your walk!`);
+            } else if (data.weather && data.weather[0].main.toLowerCase().includes('rain')) {
+               setWeatherAlert(`Alert: Rain expected. Grab your poncho!`);
+            }
+          }).catch(console.error);
+      }
+    }
+  }, [currentPosition, isTracking]);
 
   // Fall Detection Logic
   useEffect(() => {
@@ -154,20 +175,28 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
         speed: parseFloat(pace.toFixed(2)),
         duration: elapsedTime,
         type: 'automated',
-        avatar: user.avatar || '👤'
+        avatar: user.avatar || '👤',
+        geometry: positionHistory
       };
 
       // Save locally as backup
       addLog(walkData);
 
       // Save to Notion Backend
-      await fetch('/api/notion/log-walk', {
+      fetch('/api/notion/log-walk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(walkData)
-      });
+      }).catch(console.error);
+
+      // Ask to save as favorite
+      const routeName = window.prompt("Save this route as a favorite training route? Enter a name or click Cancel.");
+      if (routeName) {
+        addFavoriteRoute({ ...walkData, routeName });
+        alert(`Saved ${routeName} to Favorite Routes!`);
+      }
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -211,14 +240,44 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-4xl font-bold text-[#5A5A40] font-serif">Active Training</h2>
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest animate-pulse">
-              <ShieldAlert size={12} />
-              Fall Detection Active
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest animate-pulse">
+                <ShieldAlert size={12} />
+                Fall Detection Active
+              </div>
+              <button 
+                onClick={() => setShowFavorites(!showFavorites)}
+                className="text-[#5A5A40] text-xs font-bold underline cursor-pointer"
+              >
+                {showFavorites ? "Hide Favorites" : "View Favorite Routes"}
+              </button>
             </div>
           </div>
-          <p className="text-gray-500 italic text-xl mb-10">Passive GPS tracking for your Camino preparation.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <AnimatePresence>
+            {weatherAlert && !isTracking && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-blue-50 text-blue-800 border border-blue-200 px-4 py-3 rounded-2xl mb-6 font-medium text-sm flex items-center justify-between"
+              >
+                {weatherAlert}
+                <button onClick={() => setWeatherAlert(null)}><Square size={14}/></button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {showFavorites ? (
+            <div className="mb-8">
+               <FavoriteRoutes />
+            </div>
+          ) : (
+            <p className="text-gray-500 italic text-xl mb-10">Passive GPS tracking for your Camino preparation.</p>
+          )}
+
+          {!showFavorites && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <div className="bg-[#f5f5f0] p-8 rounded-[32px] space-y-2">
               <div className="flex items-center gap-2 text-[#5A5A40]/60 uppercase tracking-widest font-bold text-xs">
                 <Activity size={16} />
@@ -249,7 +308,9 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
               </div>
             </div>
           </div>
+          )}
 
+          {!showFavorites && (
           <div className="flex flex-col gap-4">
             {!isTracking ? (
               <button
@@ -290,6 +351,7 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
               )}
             </AnimatePresence>
           </div>
+          )}
         </div>
 
         {/* Background Map Placeholder (Visual only for beta) */}

@@ -98,7 +98,7 @@ export default function NearbyPlaces({ currentPosition }: NearbyPlacesProps) {
         document.body.appendChild(hiddenDiv);
 
         const map = new google.maps.Map(hiddenDiv, {
-          center: currentPosition || { lat: 42.8125, lng: -1.6458 },
+          center: currentPosition || { lat: 42.1181, lng: -8.8486 }, // Baiona
           zoom: 15,
         });
         mapRef.current = map;

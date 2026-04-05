@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, ChevronRight, TrendingUp, RefreshCw, CheckCircle2, Bell, Download, AlertCircle, Check, CalendarPlus, X } from 'lucide-react';
+import { Calendar, ChevronRight, TrendingUp, RefreshCw, CheckCircle2, Bell, Download, AlertCircle, Check, CalendarPlus, X, MapIcon } from 'lucide-react';
 import { format, differenceInDays, startOfToday, parseISO, isBefore } from 'date-fns';
 import { cn } from '../lib/utils';
 import { getPlans, getLogs, getCalendarSync, saveCalendarSync } from '../lib/localStore';
+import DashboardWeather from './DashboardWeather';
+import CaminoPreviewMap from './CaminoPreviewMap';
 
 interface TrainingPlanProps {
   user: any;
@@ -13,7 +15,8 @@ interface TrainingPlanProps {
 export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [syncErrorMsg, setSyncErrorMsg] = useState("");
+  const [syncErrorMsg, setSyncErrorMsg] = useState('');
+  const [showPreviewMap, setShowPreviewMap] = useState(false);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [remindersEnabled, setRemindersEnabled] = useState(false);
@@ -204,6 +207,33 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
         </div>
         <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
       </motion.div>
+
+      {/* Trail Weather & Camino Preview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <DashboardWeather startLocation={profile?.startLocation} />
+        <button 
+          onClick={() => setShowPreviewMap(!showPreviewMap)}
+          className="bg-[#5A5A40] text-white p-6 rounded-[32px] shadow-sm flex flex-col justify-center items-center hover:bg-[#4A4A30] transition-colors relative overflow-hidden group"
+        >
+          <div className="absolute inset-0 opacity-20 bg-[url('https://www.google.com/maps/vt/pb=!1m4!1m3!1i12!2i2048!3i2048!2m3!1e0!2sm!3i397117732!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0')] bg-cover transition-transform group-hover:scale-110" />
+          <MapIcon size={32} className="mb-3 relative z-10" />
+          <h4 className="font-bold text-xl relative z-10 font-serif">Preview Route</h4>
+          <p className="text-sm opacity-80 mt-1 relative z-10">Explore the Camino Português path</p>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showPreviewMap && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-8"
+          >
+            <CaminoPreviewMap />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Utility Panel: Calendar Sync & Reminders */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

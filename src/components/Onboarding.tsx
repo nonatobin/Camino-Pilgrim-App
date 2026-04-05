@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, MapPin, Calendar, Activity, User as UserIcon, Mic, MicOff, Volume2 } from 'lucide-react';
+import { ArrowRight, MapPin, Calendar, Activity, User as UserIcon, Mic, MicOff, Volume2, Sun, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { saveProfile } from '../lib/localStore';
 import { generateTrainingPlan } from '../lib/trainingEngine';
@@ -62,6 +62,16 @@ const STEPS = [
     voiceHint: 'Say a date',
   },
   {
+    id: 'wakeup',
+    title: "What time do you wake up?",
+    subtitle: "We'll schedule your training around your morning routine.",
+    icon: <Clock size={40} />,
+    type: 'time',
+    placeholder: '06:30',
+    field: 'wakeUpTime',
+    voiceHint: 'Say a time like 6:30 AM',
+  },
+  {
     id: 'start',
     title: "Where are you starting?",
     subtitle: "Common starts: Baiona, Tui, Porto, or Sarria.",
@@ -89,7 +99,6 @@ function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string |
   if (!raw) return null;
 
   if (step.type === 'number') {
-    // Handle spoken numbers like "sixty five" or "5"
     const wordNumbers: Record<string, number> = {
       zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
       six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
@@ -97,11 +106,9 @@ function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string |
       sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
       thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
     };
-    // Try direct number parse first
     const directNum = parseFloat(raw.replace(/[^0-9.]/g, ''));
     if (!isNaN(directNum) && directNum > 0) return directNum;
 
-    // Try word-to-number for simple cases like "sixty five"
     const words = raw.toLowerCase().split(/[\s-]+/);
     let total = 0;
     for (const w of words) {
@@ -113,12 +120,9 @@ function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string |
   }
 
   if (step.type === 'date') {
-    // Try to parse spoken date — Chrome speech usually gives clean text
-    // Handle "June 15th 2026", "June 15 2026", etc.
     const dateStr = raw.replace(/(st|nd|rd|th)/gi, '').trim();
     const parsed = new Date(dateStr);
     if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2025) {
-      // Format as YYYY-MM-DD for the date input
       const yyyy = parsed.getFullYear();
       const mm = String(parsed.getMonth() + 1).padStart(2, '0');
       const dd = String(parsed.getDate()).padStart(2, '0');
@@ -127,15 +131,27 @@ function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string |
     return null;
   }
 
+  if (step.type === 'time') {
+    // Try to parse spoken time like "6:30 AM", "seven thirty", "0630"
+    const timeMatch = raw.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1]);
+      const minutes = parseInt(timeMatch[2] || '0');
+      const ampm = (timeMatch[3] || '').toLowerCase();
+      if (ampm === 'pm' && hours < 12) hours += 12;
+      if (ampm === 'am' && hours === 12) hours = 0;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    return null;
+  }
+
   if (step.type === 'choice' && step.options) {
-    // Fuzzy match against options
     const lower = raw.toLowerCase();
     for (const option of step.options) {
       if (lower.includes(option.toLowerCase().split(' ')[0].toLowerCase())) {
         return option;
       }
     }
-    // Try first word match
     if (lower.includes('santiago')) return 'Santiago de Compostela';
     if (lower.includes('finis') || lower.includes('fisterra')) return 'Finisterre';
     return null;
@@ -146,6 +162,7 @@ function parseVoiceForField(transcript: string, step: typeof STEPS[0]): string |
 }
 
 export default function Onboarding({ user, onComplete }: OnboardingProps) {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -159,7 +176,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
   const startListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      // Fallback: no speech recognition available
       return;
     }
 
@@ -176,7 +192,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
       }
       setVoiceText(transcript);
 
-      // When we get a final result, parse and apply it
       if (event.results[event.results.length - 1].isFinal) {
         const parsed = parseVoiceForField(transcript, step);
         if (parsed !== null) {
@@ -219,7 +234,6 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
     }
   };
 
-  // Check if SpeechRecognition is available (Chrome, Edge — not Safari)
   const hasSpeechRecognition = typeof window !== 'undefined' &&
     ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
@@ -261,6 +275,98 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
   const stepValue = formData[step.field];
   const isValid = stepValue !== undefined && stepValue !== '' && String(stepValue).trim() !== '';
 
+  // ========================================================================
+  // WELCOME SPLASH SCREEN
+  // ========================================================================
+  if (showWelcome) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, #4A4A30 0%, #5A5A40 30%, #6B6B50 60%, #7A7A60 100%)',
+        }}
+      >
+        {/* Ambient glow circles */}
+        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-yellow-400/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-15%] left-[-10%] w-[400px] h-[400px] rounded-full bg-amber-300/8 blur-[100px] pointer-events-none" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="relative z-10 flex flex-col items-center text-center px-8 max-w-lg"
+        >
+          {/* Shell Icon */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="w-28 h-28 rounded-[32px] bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-10 shadow-2xl"
+          >
+            <span className="text-6xl">🐚</span>
+          </motion.div>
+
+          {/* Hero Text */}
+          <motion.h1
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="text-5xl md:text-6xl font-bold text-white mb-4 leading-tight"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            Buen Camino!
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55 }}
+            className="text-xl md:text-2xl text-white/70 mb-3 leading-relaxed"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            Your personal Camino de Santiago companion
+          </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.65 }}
+            className="text-base text-white/40 mb-12 max-w-sm leading-relaxed"
+          >
+            Personalized training, real-time trail guidance, weather, and voice AI — all in one place.
+          </motion.p>
+
+          {/* CTA Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowWelcome(false)}
+            className="w-full max-w-xs bg-white text-[#5A5A40] py-5 px-8 rounded-full font-bold text-xl flex items-center justify-center gap-3 shadow-2xl shadow-black/20 hover:shadow-3xl transition-all"
+          >
+            <Sun size={22} />
+            Customize for Me
+            <ArrowRight size={20} />
+          </motion.button>
+
+          {/* Subtle footer */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+            className="mt-10 text-xs text-white/25 uppercase tracking-[0.25em] font-semibold"
+          >
+            Train · Track · Thrive
+          </motion.p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // ONBOARDING WIZARD
+  // ========================================================================
   return (
     <div className="fixed inset-0 bg-[#f5f5f0] z-50 flex items-center justify-center p-6 overflow-y-auto">
       <div className="max-w-xl w-full py-12">
@@ -291,10 +397,10 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
             </div>
 
             {/* Step title */}
-            <h2 className="text-4xl font-bold text-[#5A5A40] mb-4 font-serif">
+            <h2 className="text-4xl font-bold text-[#5A5A40] mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
               {step.title}
             </h2>
-            <p className="text-gray-500 text-xl mb-8 font-serif italic">
+            <p className="text-gray-500 text-xl mb-8" style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>
               {step.subtitle}
             </p>
 
@@ -324,11 +430,12 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
                       key={option}
                       onClick={() => setFormData({ ...formData, [step.field]: option })}
                       className={cn(
-                        'w-full py-8 px-8 rounded-3xl text-2xl font-serif transition-all border-2 text-left flex items-center justify-between',
+                        'w-full py-8 px-8 rounded-3xl text-2xl transition-all border-2 text-left flex items-center justify-between',
                         formData[step.field] === option
                           ? 'bg-[#5A5A40] text-white border-[#5A5A40] shadow-lg'
                           : 'bg-[#f5f5f0] text-[#5A5A40] border-transparent hover:border-[#5A5A40]/20'
                       )}
+                      style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       {option}
                       {formData[step.field] === option && <Volume2 size={24} />}
@@ -342,7 +449,8 @@ export default function Onboarding({ user, onComplete }: OnboardingProps) {
                     placeholder={step.placeholder}
                     value={formData[step.field] || ''}
                     onChange={handleInputChange}
-                    className="flex-1 bg-[#f5f5f0] border-none rounded-3xl py-6 px-8 text-2xl text-[#5A5A40] focus:ring-4 focus:ring-[#5A5A40]/20 transition-all font-serif"
+                    className="flex-1 bg-[#f5f5f0] border-none rounded-3xl py-6 px-8 text-2xl text-[#5A5A40] focus:ring-4 focus:ring-[#5A5A40]/20 transition-all"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && isValid) handleNext();

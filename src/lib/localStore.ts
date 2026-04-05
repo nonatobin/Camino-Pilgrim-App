@@ -94,3 +94,18 @@ export function getLocalUser() {
     photoURL: null,
   };
 }
+
+export function getFavoriteRoutes(): any[] {
+  try {
+    const raw = localStorage.getItem(key('favorite_routes'));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addFavoriteRoute(route: any): void {
+  const routes = getFavoriteRoutes();
+  routes.push({ ...route, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+  localStorage.setItem(key('favorite_routes'), JSON.stringify(routes));
+}

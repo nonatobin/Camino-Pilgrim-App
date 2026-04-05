@@ -176,7 +176,7 @@ export default function InstallPrompt() {
               </button>
               <h3 className="text-2xl font-bold mb-6">Scan to Install</h3>
               <div className="bg-gray-50 p-4 rounded-2xl mb-4">
-                <img src="/qrcode.png" alt="Camino App QR Code" className="w-full rounded-xl mix-blend-multiply" />
+                <img src="/qrcode.svg" alt="Camino App QR Code — Scan to install" className="w-full rounded-xl" />
               </div>
               <p className="text-gray-500 font-medium">Use any iPhone or Android camera to open the app directly.</p>
             </motion.div>
