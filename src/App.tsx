@@ -1,3 +1,4 @@
+// Build: 2026-04-05T23:24 — all fixes: Gemini 2.5-flash, oklab fix, GPS weather, senior UX
 import React, { useState, useCallback, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ChromeRedirect from './components/ChromeRedirect';
