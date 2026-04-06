@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const notion = new Client({ auth: apiKey });
-  const { title, description, priority, reporter, screenshotBase64 } = req.body;
+  const { title, description, priority, reporter, appArea, screenshotBase64 } = req.body;
 
   let uploadedImageUrl = null;
 
@@ -42,23 +42,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Map priority to Notion's "How Important Is This to You?" options
+    const priorityMap: Record<string, string> = {
+      'P1': 'Must Have — I really need this',
+      'P2': 'Nice to Have — would improve my experience',
+      'P3': 'Just a Thought — take it or leave it',
+      'High': 'Must Have — I really need this',
+      'Medium': 'Nice to Have — would improve my experience',
+      'Low': 'Just a Thought — take it or leave it',
+    };
+    const notionPriority = priorityMap[priority] || 'Nice to Have — would improve my experience';
+
+    // Valid app area options
+    const validAreas = ['Dashboard', 'Training Plan', 'Walk Timer', 'Route Map', 'Leaderboard', 'Badges', 'Settings', 'Something New'];
+    const notionArea = validAreas.includes(appArea) ? appArea : 'Something New';
+
     const pageResponse = await notion.pages.create({
       parent: { database_id: dbId },
       properties: {
-        Title: {
+        'Feature Idea': {
           title: [{ text: { content: title || 'New Feature' } }],
         },
-        Status: {
-          status: { name: 'New' },
+        'Status': {
+          select: { name: 'Under Review' },
         },
-        Priority: {
-          select: { name: priority || 'P2' },
+        'How Important Is This to You?': {
+          select: { name: notionPriority },
         },
-        Description: {
+        'Describe Your Idea': {
           rich_text: [{ text: { content: description || '' } }],
         },
-        Reporter: {
+        'Your Name': {
           rich_text: [{ text: { content: reporter || 'Unknown' } }],
+        },
+        'Which Part of the App?': {
+          select: { name: notionArea },
+        },
+        'Date Submitted': {
+          date: { start: new Date().toISOString().split('T')[0] },
         },
       },
     });

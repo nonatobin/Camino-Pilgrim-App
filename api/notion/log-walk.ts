@@ -14,38 +14,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const notion = new Client({ auth: apiKey });
-  const { userName, distance, speed, duration, type, date, avatar } = req.body;
+  const { userName, walkPoints, breathingPoints, cohort, date, notes } = req.body;
+
+  // Valid cohort options
+  const validCohorts = ['Baiona Apr 30 start', 'June starters', 'BETA Only'];
+  const notionCohort = validCohorts.includes(cohort) ? cohort : 'BETA Only';
 
   try {
     await notion.pages.create({
       parent: { database_id: dbId },
       properties: {
-        Name: {
+        'Entry': {
           title: [
             {
               text: { content: userName || 'Pilgrim' },
             },
           ],
         },
-        Distance: {
-          number: distance || 0,
-        },
-        Speed: {
-          number: speed || 0,
-        },
-        Duration: {
-          number: duration || 0,
-        },
-        Date: {
-          date: { start: date || new Date().toISOString().split('T')[0] },
-        },
-        Type: {
-          select: { name: type || 'manual' },
-        },
-        Avatar: {
+        'Person': {
           rich_text: [
             {
-              text: { content: avatar || '👤' },
+              text: { content: userName || 'Pilgrim' },
+            },
+          ],
+        },
+        'Walk Points': {
+          number: walkPoints || 1,
+        },
+        'Breathing Points': {
+          number: breathingPoints || 0,
+        },
+        'Score': {
+          number: (walkPoints || 1) + (breathingPoints || 0),
+        },
+        'Streak': {
+          number: 1,
+        },
+        'Last Activity': {
+          date: { start: date || new Date().toISOString().split('T')[0] },
+        },
+        'Cohort': {
+          select: { name: notionCohort },
+        },
+        'Notes': {
+          rich_text: [
+            {
+              text: { content: notes || '' },
             },
           ],
         },

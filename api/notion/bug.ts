@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const notion = new Client({ auth: apiKey });
-  const { title, description, severity, reporter, environment, screenshotBase64 } = req.body;
+  const { title, description, severity, reporter, environment, stepsToReproduce, screenshotBase64 } = req.body;
 
   let uploadedImageUrl = null;
 
@@ -42,26 +42,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Map severity to Notion's "How Bad Is It?" options
+    const severityMap: Record<string, string> = {
+      'Critical': 'Showstopper — I cannot use the app',
+      'Major': 'Annoying — it works but something is off',
+      'Minor': 'Minor — small cosmetic issue',
+    };
+    const notionSeverity = severityMap[severity] || 'Minor — small cosmetic issue';
+
+    // Map environment to Notion's "Your Device" options
+    const deviceMap: Record<string, string> = {
+      'Web': 'Other',
+      'iOS': 'iPhone',
+      'Android': 'Android Phone',
+      'iPad': 'iPad / Tablet',
+      'Windows': 'Computer (Windows)',
+      'Mac': 'Computer (Mac)',
+    };
+    const notionDevice = deviceMap[environment] || 'Other';
+
     const pageResponse = await notion.pages.create({
       parent: { database_id: dbId },
       properties: {
-        Title: {
+        'Bug Report': {
           title: [{ text: { content: title || 'New Bug' } }],
         },
-        Status: {
-          status: { name: 'New' },
+        'Status': {
+          select: { name: 'New' },
         },
-        Severity: {
-          select: { name: severity || 'Minor' },
+        'How Bad Is It?': {
+          select: { name: notionSeverity },
         },
-        Description: {
+        'What Happened?': {
           rich_text: [{ text: { content: description || '' } }],
         },
-        Environment: {
-          select: { name: environment || 'Web' },
+        'Your Device': {
+          select: { name: notionDevice },
         },
-        Reporter: {
+        'Your Name': {
           rich_text: [{ text: { content: reporter || 'Unknown' } }],
+        },
+        'Steps to Reproduce': {
+          rich_text: [{ text: { content: stepsToReproduce || '' } }],
+        },
+        'Date Reported': {
+          date: { start: new Date().toISOString().split('T')[0] },
         },
       },
     });

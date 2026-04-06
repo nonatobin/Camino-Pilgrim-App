@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       database_id: dbId,
       sorts: [
         {
-          property: 'Distance',
+          property: 'Score',
           direction: 'descending',
         },
       ],
@@ -30,13 +30,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const props = page.properties;
       return {
         id: page.id,
-        name: props.Name?.title?.[0]?.plain_text || 'Unknown Pilgrim',
-        distance: props.Distance?.number || 0,
-        speed: props.Speed?.number || 0,
-        duration: props.Duration?.number || 0,
-        date: props.Date?.date?.start || '',
-        type: props.Type?.select?.name || 'manual',
-        avatar: props.Avatar?.rich_text?.[0]?.plain_text || '👤',
+        name: props.Person?.rich_text?.[0]?.plain_text || props.Entry?.title?.[0]?.plain_text || 'Unknown Pilgrim',
+        score: props.Score?.number || 0,
+        walkPoints: props['Walk Points']?.number || 0,
+        breathingPoints: props['Breathing Points']?.number || 0,
+        streak: props.Streak?.number || 0,
+        lastActivity: props['Last Activity']?.date?.start || '',
+        cohort: props.Cohort?.select?.name || '',
+        notes: props.Notes?.rich_text?.[0]?.plain_text || '',
       };
     });
 
