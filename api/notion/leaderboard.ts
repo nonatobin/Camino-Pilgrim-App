@@ -1,5 +1,3 @@
-// env loader temporarily disabled for debugging
-// import '../_lib/env';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from '@notionhq/client';
 
