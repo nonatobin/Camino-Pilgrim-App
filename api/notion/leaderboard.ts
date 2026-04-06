@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Client } from '@notionhq/client';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -13,20 +12,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Notion integration is not configured.' });
   }
 
-  const notion = new Client({ auth: apiKey });
-
   try {
-    const response = await (notion as any).dataSources.query({
-      data_source_id: dbId,
-      sorts: [
-        {
-          property: 'Score',
-          direction: 'descending',
-        },
-      ],
+    const response = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sorts: [
+          {
+            property: 'Score',
+            direction: 'descending',
+          },
+        ],
+      }),
     });
 
-    const leaderboard = response.results.map((page: any) => {
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Notion API Error:', response.status, errorData);
+      return res.status(500).json({ error: 'Failed to fetch leaderboard from Notion' });
+    }
+
+    const data = await response.json();
+
+    const leaderboard = data.results.map((page: any) => {
       const props = page.properties;
       return {
         id: page.id,
