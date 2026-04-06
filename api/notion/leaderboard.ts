@@ -16,8 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const notion = new Client({ auth: apiKey });
 
   try {
-    const response = await (notion.databases as any).query({
-      database_id: dbId,
+    const response = await (notion as any).dataSources.query({
+      data_source_id: dbId,
       sorts: [
         {
           property: 'Score',
