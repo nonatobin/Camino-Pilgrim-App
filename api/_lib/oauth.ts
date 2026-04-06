@@ -14,6 +14,7 @@
  *   const client = createOAuthClient(req);
  */
 
+import './env';
 import type { VercelRequest } from '@vercel/node';
 import { OAuth2Client } from 'google-auth-library';
 

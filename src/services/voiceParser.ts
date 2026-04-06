@@ -32,8 +32,8 @@ export async function parseVoiceInput(transcript: string, fieldType: 'number' | 
       }
     });
 
-    const result = response.text?.trim();
-    
+    const result = response.text?.trim() ?? '';
+
     if (fieldType === 'number') {
       const num = parseFloat(result || '');
       return isNaN(num) ? null : num;

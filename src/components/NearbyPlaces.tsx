@@ -125,7 +125,7 @@ export default function NearbyPlaces({ currentPosition }: NearbyPlacesProps) {
 
     const requests = category.types.map((type) =>
       new Promise<Place[]>((resolve) => {
-        const request: google.maps.places.PlacesNearbyRequest = {
+        const request: google.maps.places.PlaceSearchRequest = {
           location: currentPosition,
           radius: 2000, // 2km radius
           type: type as any,

@@ -39,17 +39,18 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
   // Weather pre-check logic (mocked alert for beta depending on current tracked pos)
   useEffect(() => {
     if (currentPosition && !isTracking) {
-      const apiKey = (import.meta as any).env.VITE_OPENWEATHER_API_KEY;
+      const apiKey = (import.meta as any).env?.VITE_OPENWEATHER_API_KEY;
       if (apiKey) {
         fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${currentPosition.lat}&lon=${currentPosition.lng}&units=imperial&appid=${apiKey}`)
-          .then(res => res.json())
+          .then(res => res.ok ? res.json() : null)
           .then(data => {
-            if (data.main && data.main.temp < 60) {
+            if (!data?.main) return;
+            if (data.main.temp < 60) {
               setWeatherAlert(`Alert: It's chilly (${Math.round(data.main.temp)}°F). Bring a jacket for your walk!`);
-            } else if (data.weather && data.weather[0].main.toLowerCase().includes('rain')) {
-               setWeatherAlert(`Alert: Rain expected. Grab your poncho!`);
+            } else if (data.weather?.[0]?.main?.toLowerCase().includes('rain')) {
+              setWeatherAlert(`Alert: Rain expected. Grab your poncho!`);
             }
-          }).catch(console.error);
+          }).catch(err => console.warn('Weather check failed:', err));
       }
     }
   }, [currentPosition, isTracking]);

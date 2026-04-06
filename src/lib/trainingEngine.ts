@@ -38,7 +38,7 @@ export async function generateTrainingPlan(user: any, profile: any) {
   const schedule: TrainingDay[] = [];
   
   for (let i = 0; i < diffDays; i++) {
-    const currentDayDate = new Date();
+    const currentDayDate = new Date(today);
     currentDayDate.setDate(today.getDate() + i);
     
     let target = startBaseline + ((finalTarget - startBaseline) * (i / diffDays));

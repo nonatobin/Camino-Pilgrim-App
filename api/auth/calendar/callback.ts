@@ -1,18 +1,24 @@
+import '../../../api/_lib/env';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createOAuthClient } from '../../_lib/oauth';
+import { createOAuthClient, getAppBaseUrl } from '../../_lib/oauth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { code } = req.query;
   const client = createOAuthClient(req);
+  const appOrigin = getAppBaseUrl(req);
 
   try {
     const { tokens } = await client.getToken(code as string);
+    // Security: restrict postMessage to our own origin only
     res.send(`
       <html>
         <body>
           <script>
             if (window.opener) {
-              window.opener.postMessage({ type: 'CALENDAR_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');
+              window.opener.postMessage(
+                { type: 'CALENDAR_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} },
+                ${JSON.stringify(appOrigin)}
+              );
               window.close();
             } else {
               window.location.href = '/';

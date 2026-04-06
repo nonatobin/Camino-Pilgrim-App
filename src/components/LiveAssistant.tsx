@@ -196,9 +196,11 @@ If they mention a bug or feature request, acknowledge it and tell them you have 
 
   // --- Start Session ---
   const startSession = useCallback(async () => {
-    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY
+      || (typeof process !== 'undefined' && (process as any).env?.VITE_GEMINI_API_KEY)
+      || (typeof process !== 'undefined' && (process as any).env?.GEMINI_API_KEY);
     if (!apiKey) {
-      setError('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your environment.');
+      setError('Gemini API key not configured. Voice features require a valid API key.');
       return;
     }
 

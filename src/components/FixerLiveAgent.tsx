@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, X, Volume2, VolumeX, ShieldCheck, Loader2 } from 'lucide-react';
+import { Mic, MicOff, X, Volume2, VolumeX, ShieldCheck, Loader2, MessageSquare } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import FixerAgentModal from './FixerAgentModal';
 
 import { addFavoriteRoute, saveCalendarSync, getLogs, getLocalUser } from '../lib/localStore';
 
@@ -69,6 +70,7 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
   const [userTranscript, setUserTranscript] = useState('');
   const [agentTranscript, setAgentTranscript] = useState('');
   const [actionLog, setActionLog] = useState<string[]>([]);
+  const [showTextFallback, setShowTextFallback] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -255,9 +257,11 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
   }, [enqueueAudio, clearPlayback]);
 
   const startSession = useCallback(async () => {
-    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY
+      || (typeof process !== 'undefined' && (process as any).env?.VITE_GEMINI_API_KEY)
+      || (typeof process !== 'undefined' && (process as any).env?.GEMINI_API_KEY);
     if (!apiKey) {
-      setError('Gemini API key missing.');
+      setError('Gemini API key not configured. Voice features require a valid API key.');
       return;
     }
 
@@ -370,8 +374,9 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
         setIsConnecting(false);
       };
       
-      ws.onerror = (e) => {
-        setError('WebSocket Connection forcefully aborted.');
+      ws.onerror = () => {
+        setError('Voice connection failed. Check your internet and try again.');
+        setIsConnecting(false);
       };
 
     } catch (e: any) {
@@ -398,16 +403,21 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
     return () => { stopSession(); };
   }, [stopSession]);
 
+  // If text fallback mode, show the form-based modal instead
+  if (showTextFallback) {
+    return <FixerAgentModal onClose={onClose} />;
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <motion.div 
+      <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 50, opacity: 0 }}
         className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col pointer-events-auto"
       >
         <div className="bg-[#1a1a1a] p-6 text-white relative">
-          <button 
+          <button
             onClick={onClose}
             className="absolute top-6 right-6 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
           >
@@ -458,8 +468,17 @@ export default function FixerLiveAgent({ onClose }: FixerLiveAgentProps) {
                </button>
             )}
           </div>
-          
+
           {error && <p className="text-xs text-red-600 text-center font-bold px-2">{error}</p>}
+
+          {/* Text fallback button — always visible for accessibility */}
+          <button
+            onClick={() => { stopSession(); setShowTextFallback(true); }}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold text-[#5A5A40] bg-white rounded-xl py-3 border border-[#5A5A40]/20 hover:bg-[#5A5A40]/5 transition-colors"
+          >
+            <MessageSquare size={16} />
+            Switch to Text Report
+          </button>
         </div>
       </motion.div>
     </div>
