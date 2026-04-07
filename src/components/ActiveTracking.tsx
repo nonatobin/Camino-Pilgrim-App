@@ -167,6 +167,8 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
     setIsTracking(false);
     setLoading(true);
 
+    const endTimeStamp = new Date().toISOString();
+    const startTimeStamp = startTime ? new Date(startTime).toISOString() : endTimeStamp;
     const pace = distance > 0 ? (distance / (elapsedTime / 3600)) : 0;
     try {
       const walkData = {
@@ -175,6 +177,8 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
         distance: parseFloat(distance.toFixed(2)),
         speed: parseFloat(pace.toFixed(2)),
         duration: elapsedTime,
+        startTime: startTimeStamp,
+        endTime: endTimeStamp,
         type: 'automated',
         avatar: user.avatar || '👤',
         geometry: positionHistory
@@ -183,14 +187,21 @@ export default function ActiveTracking({ user }: ActiveTrackingProps) {
       // Save locally as backup
       addLog(walkData);
 
-      // Save to Notion Backend
+      // Save to Notion Leaderboard — includes distance, duration, pace for leaderboard tracking
       fetch('/api/notion/log-walk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(walkData)
-      }).catch(console.error);
+      }).then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Failed to log walk');
+      }).then(data => {
+        if (data?.walkPoints) {
+          console.log(`Walk logged: ${data.walkPoints} points earned, total score: ${data.totalScore}`);
+        }
+      }).catch(err => console.error('Walk log to Notion failed:', err));
 
       // Ask to save as favorite
       const routeName = window.prompt("Save this route as a favorite training route? Enter a name or click Cancel.");

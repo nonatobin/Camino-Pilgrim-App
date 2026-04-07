@@ -1,6 +1,6 @@
 import React from "react";
 // No Firebase auth — using local storage
-import { LogOut, User, Map as MapIcon, Activity, Users, Languages, BookOpen, Headset } from "lucide-react";
+import { LogOut, User, Map as MapIcon, Activity, Users, Languages, BookOpen } from "lucide-react";
 import { cn } from "../lib/utils";
 import { featureFlags } from "../config/environment";
 interface LayoutProps {
@@ -9,7 +9,7 @@ interface LayoutProps {
   setActiveTab: (tab: string) => void;
   user: any;
   profile?: any;
-  onCallFixer: () => void;
+  onCallFixer?: () => void;
 }
 export default function Layout({
   children,
@@ -117,15 +117,7 @@ export default function Layout({
               )}{" "}
             </button>
           ))}{" "}
-          <button
-            onClick={onCallFixer}
-            className="flex flex-col items-center gap-1 transition-all duration-300 text-red-600 hover:text-red-500"
-          >
-            <Headset size={24} strokeWidth={2} />
-            <span className="text-[10px] uppercase tracking-widest font-bold opacity-100">
-               Fixer Agent
-            </span>
-          </button>
+          {/* Fixer Agent moved to standalone Chrome Extension for beta */}
         </div>{" "}
       </nav>{" "}
     </div>

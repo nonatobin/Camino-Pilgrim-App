@@ -39,7 +39,7 @@ export const isProd = !isDev;
 
 export const appUrl = isDev
   ? 'http://localhost:5173'
-  : getEnvVar('VITE_APP_URL', 'https://project-bc6yc.vercel.app');
+  : getEnvVar('VITE_APP_URL', 'https://camino-pilgrim-app.vercel.app');
 
 // ---------------------------------------------------------------------------
 // API Keys (all centralised â import from here, not scattered getEnvVar calls)

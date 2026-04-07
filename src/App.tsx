@@ -1,5 +1,5 @@
-// Build: 2026-04-05T23:24 — all fixes: Gemini 2.5-flash, oklab fix, GPS weather, senior UX
-import React, { useState, useCallback, useEffect } from 'react';
+// Build: 2026-04-07 — beta launch: training tracker + Notion leaderboard, Fixer Agent moved to Chrome Extension
+import React, { useState, useCallback } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ChromeRedirect from './components/ChromeRedirect';
 import Layout from './components/Layout';
@@ -10,10 +10,9 @@ import LiveAssistant from './components/LiveAssistant';
 import TranslatePanel from './components/TranslatePanel';
 import Journal from './components/Journal';
 import Onboarding from './components/Onboarding';
-import FixerLiveAgent from './components/FixerLiveAgent';
 import InstallPrompt from './components/InstallPrompt';
 import { featureFlags } from './config/environment';
-import { Mic, Headset } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getProfile, getLocalUser } from './lib/localStore';
 
@@ -21,17 +20,6 @@ export default function App() {
   const [profile, setProfile] = useState<any>(getProfile());
   const [activeTab, setActiveTab] = useState('plan');
   const [showAssistant, setShowAssistant] = useState(false);
-  const [showFixerAgent, setShowFixerAgent] = useState(false);
-
-  // Auto-open Fixer Agent when arriving from beta landing page
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('openFixer') === 'true') {
-      setShowFixerAgent(true);
-      // Clean URL without reload
-      window.history.replaceState({}, '', '/');
-    }
-  }, []);
 
   const user = getLocalUser();
 
@@ -47,7 +35,7 @@ export default function App() {
         {(!profile || !profile.onboardingCompleted) ? (
           <Onboarding user={user} onComplete={handleOnboardingComplete} />
         ) : (
-          <Layout user={user} profile={profile} activeTab={activeTab} setActiveTab={setActiveTab} onCallFixer={() => setShowFixerAgent(true)}>
+          <Layout user={user} profile={profile} activeTab={activeTab} setActiveTab={setActiveTab}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -72,9 +60,6 @@ export default function App() {
             <AnimatePresence>
               {showAssistant && featureFlags.voiceAssistantEnabled && (
                 <LiveAssistant user={user} profile={profile} onClose={() => setShowAssistant(false)} />
-              )}
-              {showFixerAgent && (
-                <FixerLiveAgent onClose={() => setShowFixerAgent(false)} />
               )}
             </AnimatePresence>
           </Layout>
