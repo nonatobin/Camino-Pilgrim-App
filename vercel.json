@@ -5,6 +5,8 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/beta-landing.html", "destination": "/beta-landing.html" },
+    { "source": "/feedback", "destination": "/feedback.html" },
+    { "source": "/feedback.html", "destination": "/feedback.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
