@@ -54,14 +54,28 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
       const authWindow = window.open(url, 'calendar_auth', 'width=600,height=700');
       
       const handleMessage = async (event: MessageEvent) => {
-        // Validate origin is from AI Studio preview or localhost
+        // Validate origin is from our own deployment (Vercel or localhost)
         const origin = event.origin;
-        if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+        const isValidOrigin = 
+          origin.includes('localhost') ||
+          origin.includes('.vercel.app') ||
+          origin.includes('.run.app'); // Fallback for other dev environments
+        
+        if (!isValidOrigin) {
+          console.warn(`[Calendar] Ignoring postMessage from untrusted origin: ${origin}`);
           return;
         }
 
         if (event.data?.type === 'CALENDAR_AUTH_SUCCESS') {
           window.removeEventListener('message', handleMessage);
+          
+          const { tokens } = event.data; // Extract tokens from callback
+          if (!tokens) {
+            setSyncStatus('error');
+            setSyncErrorMsg('Authentication failed: no tokens received.');
+            setSyncing(false);
+            return;
+          }
           
           const events = schedule.map((d: any) => ({
             summary: `Camino Training: ${d.targetDistance.toFixed(1)}mi Walk`,
@@ -72,7 +86,7 @@ export default function TrainingPlan({ user, profile }: TrainingPlanProps) {
           const syncResponse = await fetch('/api/calendar/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ events }),
+            body: JSON.stringify({ events, tokens }),
           });
 
           if (syncResponse.ok) {
